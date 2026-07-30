@@ -123,6 +123,7 @@ router.get('/employees/commission-payments', employeeController.getCommissionPay
 router.post('/employees/commission-payments', employeeController.registerCommissionPayment);
 router.get('/employees/payroll-payments', employeeController.getPayrollPayments);
 router.post('/employees/:id/pay-payroll', employeeController.payPayroll);
+router.post('/employees/:id/pay-weekly-payroll', employeeController.payWeeklyPayroll);
 
 // Config
 router.get('/config', async (req, res) => {

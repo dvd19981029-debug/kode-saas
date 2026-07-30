@@ -25,7 +25,8 @@ exports.updateEmployee = async (req, res) => {
             documento_numero, 
             departamento_codigo, 
             municipio_codigo, 
-            direccion_complemento 
+            direccion_complemento,
+            tipo_contratacion
         } = req.body;
         
         const updateData = {};
@@ -36,6 +37,7 @@ exports.updateEmployee = async (req, res) => {
         if (departamento_codigo !== undefined) updateData.departamento_codigo = departamento_codigo;
         if (municipio_codigo !== undefined) updateData.municipio_codigo = municipio_codigo;
         if (direccion_complemento !== undefined) updateData.direccion_complemento = direccion_complemento;
+        if (tipo_contratacion !== undefined) updateData.tipo_contratacion = tipo_contratacion;
 
         await db.collection('employees').doc(id).update(updateData);
         
@@ -285,6 +287,273 @@ exports.payPayroll = async (req, res) => {
 
     } catch (err) {
         console.error("Exception in payPayroll:", err);
+        res.status(500).json({ error: err.message });
+    }
+};
+
+exports.payWeeklyPayroll = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { orderIds, fecha_inicio, fecha_fin, metodo_pago, referencia, registrado_por } = req.body;
+
+        if (!orderIds || !Array.isArray(orderIds) || orderIds.length === 0) {
+            return res.status(400).json({ error: "Debe seleccionar al menos un pedido para liquidar." });
+        }
+        if (!fecha_inicio || !fecha_fin) {
+            return res.status(400).json({ error: "Las fechas de inicio y fin son requeridas." });
+        }
+
+        // Fetch employee
+        const empDoc = await db.collection('employees').doc(id).get();
+        if (!empDoc.exists) {
+            return res.status(404).json({ error: "Empleado no encontrado" });
+        }
+        const emp = empDoc.data();
+        const tipoContrat = emp.tipo_contratacion || 'Servicios Profesionales';
+
+        // 1. Fetch all selected orders and validate they are eligible for payment
+        const ordersToUpdate = [];
+        let gross = 0.0;
+        const commRate = parseFloat(emp.comision_porcentaje || 5.0) / 100.0;
+
+        for (const orderId of orderIds) {
+            const orderDoc = await db.collection('orders').doc(orderId).get();
+            if (!orderDoc.exists) {
+                return res.status(400).json({ error: `El pedido con ID ${orderId} no existe.` });
+            }
+            const order = orderDoc.data();
+            
+            if (order.usuario !== emp.correo) {
+                return res.status(400).json({ error: `El pedido ${order.numero_pedido || orderId} no pertenece a ${emp.nombre}.` });
+            }
+            if (order.estado === 'Cancelado') {
+                return res.status(400).json({ error: `El pedido ${order.numero_pedido || orderId} está cancelado y no puede comisionar.` });
+            }
+            if (order.estado_comision === 'Pagada') {
+                return res.status(400).json({ error: `La comisión del pedido ${order.numero_pedido || orderId} ya fue pagada anteriormente.` });
+            }
+
+            const saleAmount = parseFloat(order.monto_total || 0);
+            const commAmount = saleAmount * commRate;
+            gross += commAmount;
+            ordersToUpdate.push({ id: orderId, number: order.numero_pedido || orderId });
+        }
+
+        if (gross <= 0) {
+            return res.status(400).json({ error: "El monto de comisiones a pagar debe ser mayor a cero." });
+        }
+
+        // 2. Determine tax withholding and call FacturaLlama if Servicios Profesionales
+        let renta = 0.0;
+        let net = gross;
+
+        if (tipoContrat === 'Servicios Profesionales') {
+            renta = gross * 0.10;
+            net = gross - renta;
+
+            // Validate FSE details
+            const docTipo = emp.documento_tipo;
+            const docNum = emp.documento_numero;
+            const depto = emp.departamento_codigo;
+            const muni = emp.municipio_codigo;
+            const addr = emp.direccion_complemento;
+
+            if (!docTipo || !docNum || !depto || !muni || !addr) {
+                return res.status(400).json({ 
+                    error: "Datos fiscales del empleado incompletos para emitir Factura de Sujeto Excluido (FSE). " + 
+                           "Por favor, edita la ficha del empleado y completa su DUI, Dirección y Códigos de Ubicación." 
+                });
+            }
+
+            // Prepare FacturaLlama FSE DTE payload
+            const fseId = crypto.randomUUID();
+            const fsePayload = {
+                id: fseId,
+                recipient: {
+                    name: emp.nombre,
+                    identificationDocument: {
+                        type: docTipo,
+                        number: docNum.replace(/[^a-zA-Z0-9]/g, '') // strip dashes
+                    },
+                    address: {
+                        department: depto,
+                        municipality: muni,
+                        complement: addr
+                    }
+                },
+                items: [
+                    {
+                        type: "SERVICIOS",
+                        description: `Servicios Profesionales - Liquidación de Comisiones Semanal del ${fecha_inicio} al ${fecha_fin}`,
+                        quantity: 1,
+                        unitPrice: gross
+                    }
+                ],
+                retentionRenta: renta
+            };
+
+            const payloadString = JSON.stringify(fsePayload);
+            const apiKey = process.env.FACTURALLAMA_API_KEY || 'test_sk_45b8180f-9dab-44d5-9575-ba1487c73ed1';
+
+            const reqOpts = {
+                method: 'POST',
+                hostname: 'api.facturallama.com',
+                path: '/dte/fse',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-API-Key': apiKey,
+                    'X-API-Version': '1'
+                }
+            };
+
+            const proxyReq = https.request(reqOpts, (proxyRes) => {
+                let body = '';
+                proxyRes.on('data', chunk => body += chunk);
+                proxyRes.on('end', async () => {
+                    let responseData;
+                    try {
+                        responseData = JSON.parse(body);
+                    } catch (e) {
+                        responseData = { error: "Raw response parse error", rawBody: body };
+                    }
+
+                    const hasSignedDte = responseData && responseData.signedDte;
+                    const isSuccess = proxyRes.statusCode === 200 || proxyRes.statusCode === 201 || (proxyRes.statusCode === 422 && hasSignedDte);
+
+                    if (isSuccess) {
+                        const genCode = responseData.generationCode || responseData.id || fseId;
+                        const ctrlNum = responseData.controlNumber || null;
+                        const pdfUrl = responseData.pdfUrl || null;
+
+                        // Save weekly payroll payment record and update orders inside a batch
+                        const batch = db.batch();
+
+                        const payrollRecord = {
+                            empleado_id: id,
+                            vendedor_email: emp.correo,
+                            vendedor_nombre: emp.nombre,
+                            tipo_contratacion: tipoContrat,
+                            fecha_inicio,
+                            fecha_fin,
+                            orderIds: orderIds,
+                            monto_bruto: gross,
+                            retencion_renta: renta,
+                            monto_neto: net,
+                            metodo_pago: metodo_pago || "Transferencia",
+                            referencia: referencia || "",
+                            registrado_por: registrado_por || "admin",
+                            estado_pago: "Pagado",
+                            id_fact: genCode,
+                            generationCode: genCode,
+                            controlNumber: ctrlNum,
+                            pdfUrl: pdfUrl,
+                            createdAt: Date.now()
+                        };
+
+                        const payRef = db.collection('payroll_payments').doc(genCode);
+                        batch.set(payRef, payrollRecord);
+
+                        // Mark orders as paid
+                        ordersToUpdate.forEach(o => {
+                            const oRef = db.collection('orders').doc(o.id);
+                            batch.update(oRef, {
+                                estado_comision: 'Pagada',
+                                id_pago_comision: genCode
+                            });
+                        });
+
+                        // Add offset commission payment
+                        const commPayRef = db.collection('commission_payments').doc(`weekly-${genCode}`);
+                        const commissionRecord = {
+                            vendedor_email: emp.correo,
+                            vendedor_nombre: emp.nombre,
+                            monto_pagado: gross,
+                            fecha_pago: new Date().toISOString().split('T')[0],
+                            metodo_pago: metodo_pago || "Transferencia",
+                            referencia: `Planilla Semanal (${fecha_inicio} a ${fecha_fin}) - FSE: ${ctrlNum || genCode}`,
+                            registrado_por: registrado_por || "admin",
+                            createdAt: Date.now()
+                        };
+                        batch.set(commPayRef, commissionRecord);
+
+                        await batch.commit();
+
+                        res.status(200).json({ success: true, payment: payrollRecord, dteResponse: responseData });
+                    } else {
+                        res.status(proxyRes.statusCode).json({
+                            error: responseData.error || responseData.message || "Error al emitir FSE en FacturaLlama",
+                            details: responseData
+                        });
+                    }
+                });
+            });
+
+            proxyReq.on('error', (err) => {
+                console.error("FacturaLlama weekly FSE connection error:", err);
+                res.status(502).json({ error: "Error de conexión con FacturaLlama", details: err.message });
+            });
+
+            proxyReq.write(payloadString);
+            proxyReq.end();
+
+        } else {
+            // General Payroll (No FSE, Local recording only)
+            const genCode = "local-" + crypto.randomUUID();
+            const batch = db.batch();
+
+            const payrollRecord = {
+                empleado_id: id,
+                vendedor_email: emp.correo,
+                vendedor_nombre: emp.nombre,
+                tipo_contratacion: tipoContrat,
+                fecha_inicio,
+                fecha_fin,
+                orderIds: orderIds,
+                monto_bruto: gross,
+                retencion_renta: 0,
+                monto_neto: gross,
+                metodo_pago: metodo_pago || "Transferencia",
+                referencia: referencia || "",
+                registrado_por: registrado_por || "admin",
+                estado_pago: "Pagado",
+                id_fact: genCode,
+                generationCode: genCode,
+                controlNumber: null,
+                pdfUrl: null,
+                createdAt: Date.now()
+            };
+
+            const payRef = db.collection('payroll_payments').doc(genCode);
+            batch.set(payRef, payrollRecord);
+
+            ordersToUpdate.forEach(o => {
+                const oRef = db.collection('orders').doc(o.id);
+                batch.update(oRef, {
+                    estado_comision: 'Pagada',
+                    id_pago_comision: genCode
+                });
+            });
+
+            const commPayRef = db.collection('commission_payments').doc(`weekly-${genCode}`);
+            const commissionRecord = {
+                vendedor_email: emp.correo,
+                vendedor_nombre: emp.nombre,
+                monto_pagado: gross,
+                fecha_pago: new Date().toISOString().split('T')[0],
+                metodo_pago: metodo_pago || "Transferencia",
+                referencia: `Planilla Semanal Local (${fecha_inicio} a ${fecha_fin})`,
+                registrado_por: registrado_por || "admin",
+                createdAt: Date.now()
+            };
+            batch.set(commPayRef, commissionRecord);
+
+            await batch.commit();
+
+            res.status(200).json({ success: true, payment: payrollRecord });
+        }
+
+    } catch (err) {
+        console.error("Exception in payWeeklyPayroll:", err);
         res.status(500).json({ error: err.message });
     }
 };

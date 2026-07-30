@@ -154,7 +154,7 @@ async function renderEmpleados(container) {
 
             const tr = document.createElement('tr');
             tr.innerHTML = `
-                <td><strong>${emp.nombre}</strong><br><small style="color: var(--text-secondary);">${emp.area || 'Ventas'}</small></td>
+                <td><strong>${emp.nombre}</strong><br><small style="color: var(--text-secondary);">${emp.area || 'Ventas'} | ${emp.tipo_contratacion || 'Servicios Profesionales'}</small></td>
                 <td>${emp.correo || 'N/A'}</td>
                 <td>
                     <span style="font-size: 1.05rem; font-weight: 700; color: var(--primary);">
@@ -235,6 +235,7 @@ window.openEditCommissionModal = async function(id, name) {
         const selectedDept = emp.departamento_codigo || '';
         const selectedMuni = emp.municipio_codigo || '';
         const addressComp = emp.direccion_complemento || '';
+        const tipoContrat = emp.tipo_contratacion || 'Servicios Profesionales';
 
         let deptOpts = `<option value="">-- Seleccionar Departamento --</option>`;
         depts.forEach(d => {
@@ -246,6 +247,14 @@ window.openEditCommissionModal = async function(id, name) {
                 <p style="margin-bottom: 1.25rem; color: var(--text-secondary); font-size: 0.9rem;">
                     Completa los datos fiscales de <strong>${name}</strong> para habilitar la liquidación en Planilla y emisión de Facturas de Sujeto Excluido (FSE).
                 </p>
+
+                <div class="form-group" style="margin-bottom: 1rem;">
+                    <label for="emp-contract">Tipo de Contratación</label>
+                    <select id="emp-contract" class="form-control">
+                        <option value="Servicios Profesionales" ${tipoContrat === 'Servicios Profesionales' ? 'selected' : ''}>Servicios Profesionales (Emite FSE)</option>
+                        <option value="Planilla General" ${tipoContrat === 'Planilla General' ? 'selected' : ''}>Planilla General (Sin FSE)</option>
+                    </select>
+                </div>
                 
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
                     <div class="form-group">
@@ -337,6 +346,7 @@ window.submitEditEmployeeForm = async function(id) {
     const dept = document.getElementById('emp-dept').value;
     const muni = document.getElementById('emp-muni').value;
     const address = document.getElementById('emp-address').value.trim();
+    const contract = document.getElementById('emp-contract').value;
 
     if (isNaN(percent) || percent < 0 || percent > 100) {
         showToast("Porcentaje de comisión inválido", "warning");
@@ -355,7 +365,8 @@ window.submitEditEmployeeForm = async function(id) {
             documento_numero: docNum,
             departamento_codigo: dept,
             municipio_codigo: muni,
-            direccion_complemento: address
+            direccion_complemento: address,
+            tipo_contratacion: contract
         };
 
         await api.updateEmployee(id, payload);

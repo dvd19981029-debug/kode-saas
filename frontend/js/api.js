@@ -229,6 +229,13 @@ const api = {
         });
     },
 
+    async payWeeklyPayroll(employeeId, payrollData) {
+        return await this.request(`/employees/${employeeId}/pay-weekly-payroll`, {
+            method: 'POST',
+            body: JSON.stringify(payrollData)
+        });
+    },
+
     // Settings Configuration
     async getConfig() {
         if (!this.isOnline()) {
