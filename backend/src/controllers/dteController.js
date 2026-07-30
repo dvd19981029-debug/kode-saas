@@ -190,3 +190,90 @@ exports.generateFactura = async (req, res) => {
         res.status(500).json({ error: err.message });
     }
 };
+
+exports.receiveIncomingDte = async (req, res) => {
+    try {
+        const webhookToken = req.headers['x-webhook-token'];
+        const expectedToken = process.env.WEBHOOK_TOKEN || 'test_webhook_secret_key_kode';
+        
+        if (!webhookToken || webhookToken !== expectedToken) {
+            console.warn("Intento de webhook no autorizado.");
+            return res.status(401).json({ success: false, message: "Token de webhook no autorizado." });
+        }
+        
+        const { dteJson } = req.body;
+        if (!dteJson) {
+            return res.status(400).json({ success: false, message: "No se proporcionó el dteJson en la petición." });
+        }
+        
+        const ident = dteJson.identificacion || {};
+        const emisor = dteJson.emisor || {};
+        const receptor = dteJson.receptor || {};
+        const resumen = dteJson.resumen || {};
+        const cuerpo = dteJson.cuerpoDocumento || [];
+        
+        const selloRecepcion = ident.selloRecepcion || ident.codigoGeneracion || ("INCOMING-KODE-" + Date.now());
+        const emisorNombre = emisor.nombre || "Proveedor Desconocido";
+        const totalPagar = resumen.totalPagar || 0.00;
+        const fechaEmision = ident.fecEmi || new Date().toISOString().split('T')[0];
+        const numeroControl = ident.numeroControl || "";
+        
+        if (!db) {
+            return res.json({
+                success: true,
+                simulated: true,
+                message: "DTE recibido exitosamente (Firebase no inicializado)",
+                selloRecepcion: selloRecepcion
+            });
+        }
+        
+        // Verificar si ya existe en Firestore para evitar duplicados
+        const docRef = db.collection('dte_recibidos').doc(selloRecepcion);
+        const docSnap = await docRef.get();
+        if (docSnap.exists) {
+            return res.json({
+                success: true,
+                message: "El DTE ya está registrado (Deduplicado).",
+                selloRecepcion: selloRecepcion,
+                alreadyExists: true
+            });
+        }
+        
+        // Formatear items del DTE
+        const parsedItems = cuerpo.map(item => ({
+            numItem: item.numItem || 1,
+            cantidad: item.cantidad || 1,
+            descripcion: item.descripcion || "Item general",
+            precioUnitario: item.precioUni || 0.00,
+            ventaGravada: item.ventaGravada || 0.00
+        }));
+        
+        // Crear documento en la colección dte_recibidos
+        const dteRecord = {
+            id_dte: selloRecepcion,
+            numeroDte: selloRecepcion,
+            numeroControl: numeroControl,
+            fecha: fechaEmision,
+            emisor: emisorNombre,
+            nitEmisor: emisor.nit || "",
+            monto: totalPagar,
+            estado: 'pendiente_aplicar',
+            items: parsedItems,
+            rawJson: JSON.stringify(dteJson),
+            createdAt: Date.now()
+        };
+        
+        await docRef.set(dteRecord);
+            
+        console.log(`DTE ${selloRecepcion} registrado exitosamente en dte_recibidos`);
+        return res.json({
+            success: true,
+            message: "DTE recibido y registrado exitosamente.",
+            selloRecepcion: selloRecepcion
+        });
+        
+    } catch (err) {
+        console.error("Exception on receiveIncomingDte:", err);
+        return res.status(500).json({ success: false, error: "InternalError", message: err.message });
+    }
+};

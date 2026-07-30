@@ -142,6 +142,7 @@ router.put('/config', async (req, res) => {
 // FacturaLlama DTE & C807 Shipping
 router.post('/orders/:id/factura', dteController.generateFactura);
 router.post('/orders/:id/guia', c807Controller.generateGuia);
+router.post('/webhook/dte', dteController.receiveIncomingDte);
 
 // Real-time synchronization active clients
 let clients = [];
