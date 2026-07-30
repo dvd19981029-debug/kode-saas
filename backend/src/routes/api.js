@@ -119,6 +119,8 @@ router.post('/payments', async (req, res) => {
 // Employees & Commissions
 router.get('/employees', employeeController.getEmployees);
 router.put('/employees/:id', employeeController.updateEmployee);
+router.get('/employees/commission-payments', employeeController.getCommissionPayments);
+router.post('/employees/commission-payments', employeeController.registerCommissionPayment);
 
 // Config
 router.get('/config', async (req, res) => {

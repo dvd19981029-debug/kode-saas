@@ -205,6 +205,18 @@ const api = {
         });
     },
 
+    async getCommissionPayments(email) {
+        const qs = email ? `?email=${encodeURIComponent(email)}` : '';
+        return await this.request(`/employees/commission-payments${qs}`);
+    },
+
+    async registerCommissionPayment(payment) {
+        return await this.request('/employees/commission-payments', {
+            method: 'POST',
+            body: JSON.stringify(payment)
+        });
+    },
+
     // Settings Configuration
     async getConfig() {
         if (!this.isOnline()) {

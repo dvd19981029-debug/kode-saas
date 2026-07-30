@@ -57,7 +57,10 @@ window.handleLoginSubmit = function(e) {
 
 window.handleLogout = function() {
     window.currentUser = null;
+    window.currentProfile = null;
+    window.userRole = 'Vendedor';
     localStorage.removeItem('kode_current_user');
+    localStorage.removeItem('kode_current_profile');
     window.location.hash = 'login';
     showToast("Sesión cerrada correctamente", "info");
 };

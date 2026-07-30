@@ -3,7 +3,8 @@
 // Global State
 window.currentRoute = 'dashboard';
 window.currentUser = localStorage.getItem('kode_current_user') || null;
-window.userRole = 'Vendedor';
+window.currentProfile = localStorage.getItem('kode_current_profile') ? JSON.parse(localStorage.getItem('kode_current_profile')) : null;
+window.userRole = window.currentProfile ? window.currentProfile.role : 'Vendedor';
 
 // Toast Notification System
 function showToast(message, type = 'info') {
@@ -112,12 +113,27 @@ async function loadRoute(routeName) {
         return;
     }
 
+    // Redirect to profile selector if authenticated but no profile chosen
+    if (window.currentUser && !window.currentProfile && routeName !== 'profiles') {
+        window.location.hash = 'profiles';
+        return;
+    }
+
+    // Role-based route protection: Vendedores cannot access configuracion or empleados views
+    if (window.currentProfile && window.currentProfile.role === 'Vendedor') {
+        if (routeName === 'configuracion' || routeName === 'empleados') {
+            showToast("Acceso restringido para asesores.", "warning");
+            window.location.hash = 'dashboard';
+            return;
+        }
+    }
+
     // Toggle navigation UI elements visibility
     const sidebar = document.querySelector('.sidebar');
     const mainWrapper = document.querySelector('.main-wrapper');
     const headerBar = document.querySelector('.header-bar');
     
-    if (!window.currentUser) {
+    if (!window.currentUser || !window.currentProfile) {
         if (sidebar) sidebar.style.display = 'none';
         if (headerBar) headerBar.style.display = 'none';
         if (mainWrapper) {
@@ -134,15 +150,26 @@ async function loadRoute(routeName) {
             mainWrapper.style.paddingLeft = '';
         }
         const userDisplay = document.getElementById('user-display');
-        if (userDisplay) userDisplay.innerText = window.currentUser;
+        if (userDisplay && window.currentProfile) {
+            userDisplay.innerText = `${window.currentProfile.nombre} (${window.currentUser})`;
+        }
     }
 
     window.currentRoute = routeName;
     
-    // Highlight sidebar menu items
+    // Highlight sidebar menu items and hide unauthorized views from Vendedores
     const menuItems = document.querySelectorAll('.sidebar-menu .menu-item');
     menuItems.forEach(item => {
-        if (item.getAttribute('data-route') === routeName) {
+        const itemRoute = item.getAttribute('data-route');
+        
+        // Hide config and employees from Vendedores
+        if (window.userRole === 'Vendedor' && (itemRoute === 'empleados' || itemRoute === 'configuracion')) {
+            item.style.display = 'none';
+        } else {
+            item.style.display = '';
+        }
+
+        if (itemRoute === routeName) {
             item.classList.add('active');
         } else {
             item.classList.remove('active');
@@ -164,6 +191,10 @@ async function loadRoute(routeName) {
                 case 'login':
                     viewTitle.innerText = 'Iniciar Sesión';
                     await renderLogin(mainContent);
+                    break;
+                case 'profiles':
+                    viewTitle.innerText = 'Seleccionar Perfil';
+                    await renderProfiles(mainContent);
                     break;
                 case 'dashboard':
                     viewTitle.innerText = 'Dashboard de Gestión';
