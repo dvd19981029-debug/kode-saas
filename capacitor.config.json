@@ -1,0 +1,6 @@
+{
+  "appId": "com.kodescents.saas",
+  "appName": "KODE El Salvador",
+  "webDir": "frontend",
+  "bundledWebRuntime": false
+}

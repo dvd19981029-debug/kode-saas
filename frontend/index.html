@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>KODE El Salvador - Sistema SaaS</title>
+  
+  <!-- Premium Typography & Icons -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <!-- Styling -->
+  <link rel="stylesheet" href="/css/styles.css">
+  
+  <!-- Prevents Dark Mode Flash of Unstyled Content (FOUC) -->
+  <meta name="color-scheme" content="light dark">
+  <script>
+    {
+      const colorScheme = localStorage.getItem("color-scheme") || "dark";
+      document.documentElement.style.setProperty('color-scheme', colorScheme);
+    }
+  </script>
+</head>
+<body>
+  
+  <div id="app-layout">
+    <!-- Sidebar Navigation -->
+    <aside class="sidebar" id="app-sidebar">
+      <div class="sidebar-logo">
+        <i class="fa-solid fa-wand-magic-sparkles"></i>
+        <span>KODE El Salvador</span>
+      </div>
+      <ul class="sidebar-menu">
+        <li class="menu-item" data-route="dashboard">
+          <a href="/dashboard" onclick="routeTo(event, 'dashboard')">
+            <i class="fa-solid fa-chart-line"></i>
+            <span>Dashboard</span>
+          </a>
+        </li>
+        <li class="menu-item" data-route="pedidos">
+          <a href="/pedidos" onclick="routeTo(event, 'pedidos')">
+            <i class="fa-solid fa-cart-shopping"></i>
+            <span>Pedidos</span>
+          </a>
+        </li>
+        <li class="menu-item" data-route="insumos">
+          <a href="/insumos" onclick="routeTo(event, 'insumos')">
+            <i class="fa-solid fa-boxes-packing"></i>
+            <span>Productos Compra</span>
+          </a>
+        </li>
+        <li class="menu-item" data-route="clientes">
+          <a href="/clientes" onclick="routeTo(event, 'clientes')">
+            <i class="fa-solid fa-users"></i>
+            <span>Clientes</span>
+          </a>
+        </li>
+        <li class="menu-item" data-route="empleados">
+          <a href="/empleados" onclick="routeTo(event, 'empleados')">
+            <i class="fa-solid fa-user-tie"></i>
+            <span>Vendedores</span>
+          </a>
+        </li>
+        <li class="menu-item" data-route="configuracion">
+          <a href="/configuracion" onclick="routeTo(event, 'configuracion')">
+            <i class="fa-solid fa-sliders"></i>
+            <span>Configuración</span>
+          </a>
+        </li>
+      </ul>
+      <div class="sidebar-footer">
+        <p>© 2026 KODE Scents</p>
+        <p style="font-size: 0.75rem; margin-top: 0.25rem;">v1.0.0 (SaaS)</p>
+      </div>
+    </aside>
+
+    <!-- Main Wrapper -->
+    <div class="main-wrapper">
+      <!-- Top Header Bar -->
+      <header class="header-bar">
+        <div class="header-title">
+          <h1 id="view-title">Dashboard</h1>
+        </div>
+        <div class="header-actions">
+          <div class="user-badge">
+            <i class="fa-solid fa-circle-user"></i>
+            <span id="user-display">virgicerna@gmail.com</span>
+          </div>
+          <button class="btn btn-secondary" onclick="toggleTheme()" title="Cambiar Tema" style="padding: 0.5rem; border-radius: 50%;">
+            <i class="fa-solid fa-moon" id="theme-icon"></i>
+          </button>
+        </div>
+      </header>
+      
+      <!-- Offline Alert Banner -->
+      <div class="offline-banner" id="offline-banner">
+        <i class="fa-solid fa-cloud-arrow-down"></i> Sincronización Fuera de Línea Activa. Los pedidos se guardarán localmente.
+      </div>
+
+      <!-- Main Body Container -->
+      <main class="content-body" id="main-content">
+        <!-- Views injected here dynamically by JS Router -->
+      </main>
+    </div>
+  </div>
+
+  <!-- Global Modal Container -->
+  <div class="modal" id="global-modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 class="modal-title" id="modal-title">Título del Modal</h3>
+        <button class="modal-close" onclick="closeModal()">&times;</button>
+      </div>
+      <div class="modal-body" id="modal-body">
+        <!-- Modal body content goes here -->
+      </div>
+      <div class="modal-footer" id="modal-footer">
+        <!-- Modal buttons go here -->
+      </div>
+    </div>
+  </div>
+
+  <!-- External Libraries -->
+  <!-- localForage for offline storage -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/localforage/1.10.0/localforage.min.js"></script>
+  <!-- SheetJS (xlsx) for excel exporting -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <!-- ChartJS for dashboard statistics -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  
+  <!-- Frontend Javascript Code -->
+  <script src="/js/api.js"></script>
+  <script src="/js/views/login.js"></script>
+  <script src="/js/views/dashboard.js"></script>
+  <script src="/js/views/clientes.js"></script>
+  <script src="/js/views/pedidos.js"></script>
+  <script src="/js/views/nuevo_pedido.js"></script>
+  <script src="/js/views/insumos.js"></script>
+  <script src="/js/views/empleados.js"></script>
+  <script src="/js/views/configuracion.js"></script>
+  <script src="/js/app.js"></script>
+</body>
+</html>
