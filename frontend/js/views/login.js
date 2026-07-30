@@ -33,7 +33,7 @@ async function renderLogin(container) {
 
 window.handleLoginSubmit = function(e) {
     e.preventDefault();
-    const email = document.getElementById('l-email').value;
+    const email = document.getElementById('l-email').value.trim();
     const pass = document.getElementById('l-pass').value;
 
     if (!email || !pass) {
@@ -41,20 +41,23 @@ window.handleLoginSubmit = function(e) {
         return;
     }
 
-    // Firebase Auth integration points here
-    // For local mockup validation
+    // Firebase Auth / Local Creds validation
+    // Allow admin email (pm3923193@gmail.com) and the sales emails
     if (email === 'virgicerna@gmail.com' || email === 'pm3923193@gmail.com' || email.endsWith('@kodescents.com') || email === 'luisundae@gmail.com') {
         window.currentUser = email;
-        document.getElementById('user-display').innerText = email;
+        localStorage.setItem('kode_current_user', email);
+        const userDisplay = document.getElementById('user-display');
+        if (userDisplay) userDisplay.innerText = email;
         showToast("¡Inicio de sesión exitoso!", "success");
         window.location.hash = 'dashboard';
     } else {
-        showToast("Credenciales no válidas. Prueba con virgicerna@gmail.com", "danger");
+        showToast("Credenciales no válidas. Prueba con tu correo de administrador o asesor.", "danger");
     }
 };
 
 window.handleLogout = function() {
     window.currentUser = null;
+    localStorage.removeItem('kode_current_user');
     window.location.hash = 'login';
     showToast("Sesión cerrada correctamente", "info");
 };

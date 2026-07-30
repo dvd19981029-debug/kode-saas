@@ -84,9 +84,10 @@
           <h1 id="view-title">Dashboard</h1>
         </div>
         <div class="header-actions">
-          <div class="user-badge">
+          <div class="user-badge" onclick="handleLogout()" style="cursor: pointer;" title="Cerrar Sesión">
             <i class="fa-solid fa-circle-user"></i>
             <span id="user-display">virgicerna@gmail.com</span>
+            <i class="fa-solid fa-right-from-bracket" style="margin-left: 0.5rem; font-size: 0.8rem; opacity: 0.7;"></i>
           </div>
           <button class="btn btn-secondary" onclick="toggleTheme()" title="Cambiar Tema" style="padding: 0.5rem; border-radius: 50%;">
             <i class="fa-solid fa-moon" id="theme-icon"></i>

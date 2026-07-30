@@ -2,7 +2,7 @@
 
 // Global State
 window.currentRoute = 'dashboard';
-window.currentUser = 'virgicerna@gmail.com'; // Default user as employee Virgen Cerna
+window.currentUser = localStorage.getItem('kode_current_user') || null;
 window.userRole = 'Vendedor';
 
 // Toast Notification System
@@ -106,6 +106,37 @@ window.routeTo = function(event, routeName) {
 };
 
 async function loadRoute(routeName) {
+    // Redirect to login if not authenticated
+    if (!window.currentUser && routeName !== 'login') {
+        window.location.hash = 'login';
+        return;
+    }
+
+    // Toggle navigation UI elements visibility
+    const sidebar = document.querySelector('.sidebar');
+    const mainWrapper = document.querySelector('.main-wrapper');
+    const headerBar = document.querySelector('.header-bar');
+    
+    if (!window.currentUser) {
+        if (sidebar) sidebar.style.display = 'none';
+        if (headerBar) headerBar.style.display = 'none';
+        if (mainWrapper) {
+            mainWrapper.style.marginLeft = '0';
+            mainWrapper.style.width = '100%';
+            mainWrapper.style.paddingLeft = '0';
+        }
+    } else {
+        if (sidebar) sidebar.style.display = 'flex';
+        if (headerBar) headerBar.style.display = 'flex';
+        if (mainWrapper) {
+            mainWrapper.style.marginLeft = '';
+            mainWrapper.style.width = '';
+            mainWrapper.style.paddingLeft = '';
+        }
+        const userDisplay = document.getElementById('user-display');
+        if (userDisplay) userDisplay.innerText = window.currentUser;
+    }
+
     window.currentRoute = routeName;
     
     // Highlight sidebar menu items
@@ -130,6 +161,10 @@ async function loadRoute(routeName) {
         try {
             // Match routes
             switch (routeName) {
+                case 'login':
+                    viewTitle.innerText = 'Iniciar Sesión';
+                    await renderLogin(mainContent);
+                    break;
                 case 'dashboard':
                     viewTitle.innerText = 'Dashboard de Gestión';
                     await renderDashboard(mainContent);
