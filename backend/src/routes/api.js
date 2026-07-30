@@ -121,6 +121,8 @@ router.get('/employees', employeeController.getEmployees);
 router.put('/employees/:id', employeeController.updateEmployee);
 router.get('/employees/commission-payments', employeeController.getCommissionPayments);
 router.post('/employees/commission-payments', employeeController.registerCommissionPayment);
+router.get('/employees/payroll-payments', employeeController.getPayrollPayments);
+router.post('/employees/:id/pay-payroll', employeeController.payPayroll);
 
 // Config
 router.get('/config', async (req, res) => {
@@ -148,7 +150,7 @@ router.post('/webhook/dte', dteController.receiveIncomingDte);
 
 // Real-time synchronization active clients
 let clients = [];
-const collectionsToListen = ['orders', 'order_details', 'clients', 'catalog', 'employees', 'payments', 'config'];
+const collectionsToListen = ['orders', 'order_details', 'clients', 'catalog', 'employees', 'payments', 'config', 'payroll_payments', 'commission_payments'];
 
 // Register real-time Firestore listeners for each collection
 if (db) {

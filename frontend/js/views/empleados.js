@@ -167,8 +167,8 @@ async function renderEmpleados(container) {
                 <td><span style="color: var(--color-registrado); font-weight: 700;">$${pending.toFixed(2)}</span></td>
                 <td>
                     <div style="display: flex; gap: 0.5rem;">
-                        <button class="btn btn-secondary btn-sm" onclick="openEditCommissionModal('${emp.id}', '${emp.nombre.replace(/'/g, "\\'")}', ${emp.comision_porcentaje || 5})" title="Editar Porcentaje">
-                            <i class="fa-solid fa-pen-to-square"></i> Editar %
+                        <button class="btn btn-secondary btn-sm" onclick="openEditCommissionModal('${emp.id}', '${emp.nombre.replace(/'/g, "\\'")}')" title="Editar Ficha de Colaborador">
+                            <i class="fa-solid fa-user-pen"></i> Editar Ficha
                         </button>
                         <button class="btn btn-primary btn-sm" style="background-color: var(--color-entregado); border-color: var(--color-entregado);" onclick="openPayCommissionModal('${emp.correo.replace(/'/g, "\\'")}', '${emp.nombre.replace(/'/g, "\\'")}', ${pending})" title="Registrar Pago">
                             <i class="fa-solid fa-money-bill-wave"></i> Registrar Pago
@@ -213,43 +213,157 @@ async function renderEmpleados(container) {
     }
 }
 
-// Modal to edit Commission Percentage
-window.openEditCommissionModal = function(id, name, currentPercent) {
-    const bodyHTML = `
-        <div class="form-group">
-            <p style="margin-bottom: 1.25rem; color: var(--text-secondary);">Ajusta el porcentaje de comisión para la asesora <strong>${name}</strong>.</p>
-            <label for="emp-percent">Porcentaje de Comisión (%)</label>
-            <div style="display: flex; align-items: center; gap: 0.5rem; margin-top: 0.5rem;">
-                <input type="number" id="emp-percent" class="form-control" value="${currentPercent}" step="0.5" min="0" max="100" style="font-size: 1.5rem; font-weight: 700; text-align: center; width: 120px;">
-                <span style="font-size: 1.5rem; font-weight: 700;">%</span>
-            </div>
+// Modal to edit Employee Profile & FSE Details
+window.openEditCommissionModal = async function(id, name) {
+    openModal('Editar Ficha del Colaborador', `
+        <div style="text-align: center; padding: 2rem;">
+            <i class="fa-solid fa-spinner fa-spin" style="font-size: 2rem; margin-bottom: 0.5rem; display: block;"></i>
+            Cargando datos fiscales y catálogos...
         </div>
-    `;
+    `, '');
 
-    const footerHTML = `
-        <button class="btn btn-secondary" onclick="closeModal()">Cancelar</button>
-        <button class="btn btn-primary" onclick="submitEditCommissionForm('${id}')">Guardar Ajuste</button>
-    `;
+    try {
+        const depts = await api.getDepartments();
+        const munis = await api.getMunicipalities();
+        const employees = await api.getEmployees();
+        const emp = employees.find(e => e.id === id) || {};
 
-    openModal('Ajustar Porcentaje de Comisión', bodyHTML, footerHTML);
+        const percent = emp.comision_porcentaje !== undefined ? emp.comision_porcentaje : 5.0;
+        const baseSalary = emp.salario_base !== undefined ? emp.salario_base : 0.00;
+        const docTipo = emp.documento_tipo || 'DUI';
+        const docNum = emp.documento_numero || '';
+        const selectedDept = emp.departamento_codigo || '';
+        const selectedMuni = emp.municipio_codigo || '';
+        const addressComp = emp.direccion_complemento || '';
+
+        let deptOpts = `<option value="">-- Seleccionar Departamento --</option>`;
+        depts.forEach(d => {
+            deptOpts += `<option value="${d.id}" ${d.id === selectedDept ? 'selected' : ''}>${d.nombre}</option>`;
+        });
+
+        const bodyHTML = `
+            <div style="max-height: 60vh; overflow-y: auto; padding-right: 0.5rem; text-align: left;">
+                <p style="margin-bottom: 1.25rem; color: var(--text-secondary); font-size: 0.9rem;">
+                    Completa los datos fiscales de <strong>${name}</strong> para habilitar la liquidación en Planilla y emisión de Facturas de Sujeto Excluido (FSE).
+                </p>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+                    <div class="form-group">
+                        <label for="emp-percent">Comisión de Ventas (%)</label>
+                        <input type="number" id="emp-percent" class="form-control" value="${percent}" step="0.5" min="0" max="100">
+                    </div>
+                    <div class="form-group">
+                        <label for="emp-salary">Salario Base Fijo ($)</label>
+                        <input type="number" id="emp-salary" class="form-control" value="${baseSalary}" step="0.01" min="0">
+                    </div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+                    <div class="form-group">
+                        <label for="emp-doc-tipo">Tipo de Documento</label>
+                        <select id="emp-doc-tipo" class="form-control">
+                            <option value="DUI" ${docTipo === 'DUI' ? 'selected' : ''}>DUI</option>
+                            <option value="NIT" ${docTipo === 'NIT' ? 'selected' : ''}>NIT</option>
+                            <option value="PASAPORTE" ${docTipo === 'PASAPORTE' ? 'selected' : ''}>Pasaporte</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="emp-doc-num">Número de Documento</label>
+                        <input type="text" id="emp-doc-num" class="form-control" value="${docNum}" placeholder="00000000-0">
+                    </div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+                    <div class="form-group">
+                        <label for="emp-dept">Departamento (Hacienda)</label>
+                        <select id="emp-dept" class="form-control" onchange="filterEmpMunicipalities()">
+                            ${deptOpts}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="emp-muni">Municipio (Hacienda)</label>
+                        <select id="emp-muni" class="form-control">
+                            <option value="">-- Seleccionar --</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="emp-address">Dirección Detallada (Lugar de Habitación/Servicio)</label>
+                    <textarea id="emp-address" class="form-control" rows="2" style="resize: vertical;" placeholder="Pasaje, block, número de casa, colonia, etc.">${addressComp}</textarea>
+                </div>
+            </div>
+        `;
+
+        const footerHTML = `
+            <button class="btn btn-secondary" onclick="closeModal()">Cancelar</button>
+            <button class="btn btn-primary" onclick="submitEditEmployeeForm('${id}')">Guardar Ficha</button>
+        `;
+
+        window.localMunis = munis;
+        window.selectedMuniCode = selectedMuni;
+
+        openModal('Editar Ficha de Colaborador', bodyHTML, footerHTML);
+        filterEmpMunicipalities();
+
+    } catch (err) {
+        showToast("Error al abrir ficha: " + err.message, "danger");
+        closeModal();
+    }
 };
 
-window.submitEditCommissionForm = async function(id) {
-    const input = document.getElementById('emp-percent');
-    const newPercent = parseFloat(input.value);
+window.filterEmpMunicipalities = function() {
+    const deptSelect = document.getElementById('emp-dept');
+    const muniSelect = document.getElementById('emp-muni');
+    if (!deptSelect || !muniSelect || !window.localMunis) return;
 
-    if (isNaN(newPercent) || newPercent < 0 || newPercent > 100) {
-        showToast("Porcentaje inválido", "warning");
+    const selectedDept = deptSelect.value;
+    muniSelect.innerHTML = `<option value="">-- Seleccionar Municipio --</option>`;
+
+    if (!selectedDept) return;
+
+    const filtered = window.localMunis.filter(m => m.depto_id === selectedDept);
+    filtered.forEach(m => {
+        const isSelected = m.id === window.selectedMuniCode ? 'selected' : '';
+        muniSelect.innerHTML += `<option value="${m.id}" ${isSelected}>${m.nombre}</option>`;
+    });
+};
+
+window.submitEditEmployeeForm = async function(id) {
+    const percent = parseFloat(document.getElementById('emp-percent').value);
+    const salary = parseFloat(document.getElementById('emp-salary').value);
+    const docTipo = document.getElementById('emp-doc-tipo').value;
+    const docNum = document.getElementById('emp-doc-num').value.trim();
+    const dept = document.getElementById('emp-dept').value;
+    const muni = document.getElementById('emp-muni').value;
+    const address = document.getElementById('emp-address').value.trim();
+
+    if (isNaN(percent) || percent < 0 || percent > 100) {
+        showToast("Porcentaje de comisión inválido", "warning");
+        return;
+    }
+    if (isNaN(salary) || salary < 0) {
+        showToast("Salario base inválido", "warning");
         return;
     }
 
     try {
-        await api.updateEmployee(id, { comision_porcentaje: newPercent });
+        const payload = {
+            comision_porcentaje: percent,
+            salario_base: salary,
+            documento_tipo: docTipo,
+            documento_numero: docNum,
+            departamento_codigo: dept,
+            municipio_codigo: muni,
+            direccion_complemento: address
+        };
+
+        await api.updateEmployee(id, payload);
         closeModal();
-        showToast("¡Porcentaje de comisión actualizado!", "success");
+        showToast("Ficha del colaborador actualizada con éxito.", "success");
         await renderEmpleados(document.getElementById('main-content'));
     } catch(err) {
-        showToast(`Error al guardar porcentaje: ${err.message}`, "danger");
+        showToast(`Error al guardar: ${err.message}`, "danger");
     }
 };
 

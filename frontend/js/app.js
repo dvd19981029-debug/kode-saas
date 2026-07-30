@@ -119,9 +119,9 @@ async function loadRoute(routeName) {
         return;
     }
 
-    // Role-based route protection: Vendedores cannot access configuracion or empleados views
+    // Role-based route protection: Vendedores cannot access configuracion, empleados, or planilla views
     if (window.currentProfile && window.currentProfile.role === 'Vendedor') {
-        if (routeName === 'configuracion' || routeName === 'empleados') {
+        if (routeName === 'configuracion' || routeName === 'empleados' || routeName === 'planilla') {
             showToast("Acceso restringido para asesores.", "warning");
             window.location.hash = 'dashboard';
             return;
@@ -162,8 +162,8 @@ async function loadRoute(routeName) {
     menuItems.forEach(item => {
         const itemRoute = item.getAttribute('data-route');
         
-        // Hide config and employees from Vendedores
-        if (window.userRole === 'Vendedor' && (itemRoute === 'empleados' || itemRoute === 'configuracion')) {
+        // Hide config, employees, and planilla from Vendedores
+        if (window.userRole === 'Vendedor' && (itemRoute === 'empleados' || itemRoute === 'planilla' || itemRoute === 'configuracion')) {
             item.style.display = 'none';
         } else {
             item.style.display = '';
@@ -220,6 +220,10 @@ async function loadRoute(routeName) {
                     viewTitle.innerText = 'Porcentaje de Comisión por Asesor';
                     await renderEmpleados(mainContent);
                     break;
+                case 'planilla':
+                    viewTitle.innerText = 'Planilla de Sujetos Excluidos';
+                    await renderPlanilla(mainContent);
+                    break;
                 case 'configuracion':
                     viewTitle.innerText = 'Configuración del Sistema';
                     await renderConfiguracion(mainContent);
@@ -263,12 +267,14 @@ window.smartRefreshView = function(changedCollection) {
         
         const collectionViewMap = {
             'clients': ['clientes', 'nuevo-pedido', 'pedidos'],
-            'orders': ['pedidos', 'dashboard', 'insumos'],
+            'orders': ['pedidos', 'dashboard', 'insumos', 'planilla'],
             'order_details': ['pedidos', 'insumos', 'dashboard'],
             'catalog': ['nuevo-pedido', 'pedidos'],
             'payments': ['dashboard'],
-            'employees': ['empleados', 'dashboard'],
-            'config': ['dashboard', 'empleados', 'configuracion']
+            'employees': ['empleados', 'dashboard', 'planilla'],
+            'config': ['dashboard', 'empleados', 'configuracion'],
+            'payroll_payments': ['planilla', 'empleados'],
+            'commission_payments': ['empleados', 'planilla']
         };
 
         const affectedViews = collectionViewMap[changedCollection] || [];

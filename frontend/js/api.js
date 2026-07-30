@@ -217,6 +217,18 @@ const api = {
         });
     },
 
+    async getPayrollPayments(mes) {
+        const qs = mes ? `?mes=${encodeURIComponent(mes)}` : '';
+        return await this.request(`/employees/payroll-payments${qs}`);
+    },
+
+    async payPayroll(employeeId, payrollData) {
+        return await this.request(`/employees/${employeeId}/pay-payroll`, {
+            method: 'POST',
+            body: JSON.stringify(payrollData)
+        });
+    },
+
     // Settings Configuration
     async getConfig() {
         if (!this.isOnline()) {
@@ -340,7 +352,9 @@ const cacheKeyMap = {
     'catalog': 'cached_catalog',
     'payments': 'cached_payments',
     'employees': 'cached_employees',
-    'config': 'cached_config'
+    'config': 'cached_config',
+    'payroll_payments': 'cached_payroll_payments',
+    'commission_payments': 'cached_commission_payments'
 };
 
 api.initRealtimeSync = function() {
