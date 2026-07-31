@@ -4,11 +4,15 @@ const crypto = require('crypto');
 
 exports.getEmployees = async (req, res) => {
     try {
-        const snapshot = await db.collection('employees').get();
-        const employees = [];
-        snapshot.forEach(doc => {
-            employees.push(doc.data());
-        });
+        let employees = [];
+        if (global.localCache && global.localCache.employees && global.localCache.employees.length > 0) {
+            employees = [...global.localCache.employees];
+        } else {
+            const snapshot = await db.collection('employees').get();
+            snapshot.forEach(doc => {
+                employees.push({ id: doc.id, ...doc.data() });
+            });
+        }
         res.json(employees);
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -50,17 +54,22 @@ exports.updateEmployee = async (req, res) => {
 exports.getCommissionPayments = async (req, res) => {
     try {
         const { email } = req.query;
-        let query = db.collection('commission_payments');
-        if (email) {
-            query = query.where('vendedor_email', '==', email);
+        let payments = [];
+        if (global.localCache && global.localCache.commission_payments && global.localCache.commission_payments.length > 0) {
+            payments = [...global.localCache.commission_payments];
+            if (email) {
+                payments = payments.filter(p => p.vendedor_email === email);
+            }
+        } else {
+            let query = db.collection('commission_payments');
+            if (email) {
+                query = query.where('vendedor_email', '==', email);
+            }
+            const snapshot = await query.get();
+            snapshot.forEach(doc => {
+                payments.push({ id: doc.id, ...doc.data() });
+            });
         }
-        // Since orderBy requires an index if coupled with where, let's fetch first and sort in JS
-        // to avoid index-creation errors during testing.
-        const snapshot = await query.get();
-        const payments = [];
-        snapshot.forEach(doc => {
-            payments.push({ id: doc.id, ...doc.data() });
-        });
         
         // Sort by createdAt desc
         payments.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
@@ -100,15 +109,22 @@ exports.registerCommissionPayment = async (req, res) => {
 exports.getPayrollPayments = async (req, res) => {
     try {
         const { mes } = req.query;
-        let query = db.collection('payroll_payments');
-        if (mes) {
-            query = query.where('mes', '==', mes);
+        let payments = [];
+        if (global.localCache && global.localCache.payroll_payments && global.localCache.payroll_payments.length > 0) {
+            payments = [...global.localCache.payroll_payments];
+            if (mes) {
+                payments = payments.filter(p => p.mes === mes);
+            }
+        } else {
+            let query = db.collection('payroll_payments');
+            if (mes) {
+                query = query.where('mes', '==', mes);
+            }
+            const snapshot = await query.get();
+            snapshot.forEach(doc => {
+                payments.push({ id: doc.id, ...doc.data() });
+            });
         }
-        const snapshot = await query.get();
-        const payments = [];
-        snapshot.forEach(doc => {
-            payments.push({ id: doc.id, ...doc.data() });
-        });
         payments.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
         res.json(payments);
     } catch (err) {

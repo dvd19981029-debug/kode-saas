@@ -10,6 +10,9 @@ const { db } = require('../config/firebase');
 // Generic lists/configs
 router.get('/catalog', async (req, res) => {
     try {
+        if (global.localCache && global.localCache.catalog && global.localCache.catalog.length > 0) {
+            return res.json(global.localCache.catalog);
+        }
         const snapshot = await db.collection('catalog').get();
         const items = [];
         snapshot.forEach(doc => items.push(doc.data()));
@@ -21,6 +24,9 @@ router.get('/catalog', async (req, res) => {
 
 router.get('/clients', async (req, res) => {
     try {
+        if (global.localCache && global.localCache.clients && global.localCache.clients.length > 0) {
+            return res.json(global.localCache.clients);
+        }
         const snapshot = await db.collection('clients').get();
         const items = [];
         snapshot.forEach(doc => items.push(doc.data()));
@@ -88,6 +94,9 @@ router.post('/order-details/mark-status', orderController.markDetailStatus);
 // Payments
 router.get('/payments', async (req, res) => {
     try {
+        if (global.localCache && global.localCache.payments && global.localCache.payments.length > 0) {
+            return res.json(global.localCache.payments);
+        }
         const snapshot = await db.collection('payments').get();
         const items = [];
         snapshot.forEach(doc => items.push(doc.data()));
@@ -149,6 +158,19 @@ router.post('/orders/:id/factura', dteController.generateFactura);
 router.post('/orders/:id/guia', c807Controller.generateGuia);
 router.post('/webhook/dte', dteController.receiveIncomingDte);
 
+// Initialize global memory cache to optimize and save Firestore reads
+global.localCache = {
+    orders: [],
+    order_details: [],
+    clients: [],
+    catalog: [],
+    employees: [],
+    payments: [],
+    config: {},
+    payroll_payments: [],
+    commission_payments: []
+};
+
 // Real-time synchronization active clients
 let clients = [];
 const collectionsToListen = ['orders', 'order_details', 'clients', 'catalog', 'employees', 'payments', 'config', 'payroll_payments', 'commission_payments'];
@@ -159,6 +181,20 @@ if (db) {
         let isInitial = true;
         
         db.collection(col).onSnapshot(snapshot => {
+            // Update local memory cache on any snapshot change
+            const items = [];
+            snapshot.forEach(doc => {
+                items.push({ id: doc.id, ...doc.data() });
+            });
+
+            if (col === 'config') {
+                const settingsDoc = items.find(i => i.id === 'settings');
+                global.localCache[col] = settingsDoc || {};
+            } else {
+                global.localCache[col] = items;
+            }
+
+            // If it is the initial load, populate cache and skip broadcasting
             if (isInitial) {
                 isInitial = false;
                 return;

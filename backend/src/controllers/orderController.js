@@ -2,11 +2,15 @@ const { db } = require('../config/firebase');
 
 exports.getOrders = async (req, res) => {
     try {
-        const snapshot = await db.collection('orders').get();
-        const orders = [];
-        snapshot.forEach(doc => {
-            orders.push(doc.data());
-        });
+        let orders = [];
+        if (global.localCache && global.localCache.orders && global.localCache.orders.length > 0) {
+            orders = [...global.localCache.orders];
+        } else {
+            const snapshot = await db.collection('orders').get();
+            snapshot.forEach(doc => {
+                orders.push(doc.data());
+            });
+        }
         // Sort by date descending
         orders.sort((a, b) => new Date(b.fecha_pedido) - new Date(a.fecha_pedido));
         res.json(orders);
@@ -93,10 +97,16 @@ exports.updateOrder = async (req, res) => {
 
 exports.getOrderDetails = async (req, res) => {
     try {
-        const snapshot = await db.collection('order_details').get();
-        const items = [];
-        snapshot.forEach(doc => items.push(doc.data()));
-        res.json(items);
+        let details = [];
+        if (global.localCache && global.localCache.order_details && global.localCache.order_details.length > 0) {
+            details = [...global.localCache.order_details];
+        } else {
+            const snapshot = await db.collection('order_details').get();
+            snapshot.forEach(doc => {
+                details.push(doc.data());
+            });
+        }
+        res.json(details);
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
