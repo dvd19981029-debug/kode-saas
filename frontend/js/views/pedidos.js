@@ -505,6 +505,20 @@ window.openOrderDetailsModal = async function(orderId) {
                         <span class="badge badge-${(order.estado || 'Registrado').replace(/\s+/g, '-').toLowerCase()}" style="margin-top: 0.25rem;">${order.estado || 'Registrado'}</span>
                         <span style="color: var(--text-secondary); display: block; margin-top: 0.25rem;">Fecha: ${order.fecha_pedido ? new Date(order.fecha_pedido).toLocaleDateString() : 'N/A'}</span>
                     </div>
+                    <div style="grid-column: 1 / -1; margin-top: 0.75rem; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 0.75rem;">
+                        <span style="color: var(--text-muted); display: block; font-size: 0.75rem; text-transform: uppercase;">Dirección de Entrega</span>
+                        <span style="color: #fff; display: block; font-weight: 500;">
+                            ${client && client.direccion ? client.direccion : 'N/A'}
+                        </span>
+                        <span style="color: var(--text-secondary); display: block; font-size: 0.8rem; margin-top: 0.15rem;">
+                            ${client && client.municipio ? client.municipio : ''}${client && client.departamento ? ', ' + client.departamento : ''}
+                        </span>
+                        ${client && client.ubicacion ? `
+                            <a href="${client.ubicacion.startsWith('http') ? client.ubicacion : 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(client.ubicacion)}" target="_blank" style="color: var(--primary); font-size: 0.78rem; text-decoration: underline; display: inline-flex; align-items: center; gap: 0.25rem; margin-top: 0.35rem;">
+                                <i class="fa-solid fa-location-dot"></i> Ver ubicación en mapa
+                            </a>
+                        ` : ''}
+                    </div>
                 </div>
 
                 <h4 style="margin-bottom: 0.75rem; color: var(--text-secondary);"><i class="fa-solid fa-bottle-droplet"></i> Fragancias en el Pedido</h4>
