@@ -25,10 +25,15 @@ async function renderNuevoPedido(container) {
                 
                 <div class="form-group">
                     <label for="o-client">Cliente *</label>
-                    <select id="o-client" class="form-control" required>
-                        <option value="">Selecciona un cliente...</option>
-                        ${clientOptions}
-                    </select>
+                    <div style="display: flex; gap: 0.5rem; align-items: center;">
+                        <select id="o-client" class="form-control" required style="flex-grow: 1;">
+                            <option value="">Selecciona un cliente...</option>
+                            ${clientOptions}
+                        </select>
+                        <button type="button" class="btn btn-primary" onclick="openRegisterClientFromOrderModal()" style="height: 42px; display: flex; align-items: center; justify-content: center; gap: 0.25rem; white-space: nowrap; padding: 0 0.75rem;">
+                            <i class="fa-solid fa-user-plus"></i> + Nuevo
+                        </button>
+                    </div>
                 </div>
 
                 <div class="form-group">
@@ -287,5 +292,135 @@ window.saveOrder = async function() {
         window.location.hash = 'pedidos';
     } catch(err) {
         showToast(`Error al guardar el pedido: ${err.message}`, "danger");
+    }
+};
+
+window.openRegisterClientFromOrderModal = async function() {
+    const departments = await api.getDepartments();
+    const municipalities = await api.getMunicipalities();
+
+    const deptoOptions = departments.map(d => `<option value="${d.id}">${d.name}</option>`).join('');
+
+    const bodyHTML = `
+        <form id="frm-register-client-order">
+            <div class="form-group">
+                <label for="co-name">Nombre Completo *</label>
+                <input type="text" id="co-name" class="form-control" required placeholder="E.g. Lorena de Cabrera">
+            </div>
+            <div class="form-group">
+                <label for="co-phone">Teléfono Wa *</label>
+                <input type="text" id="co-phone" class="form-control" required placeholder="E.g. 71189499">
+            </div>
+            <div class="form-group">
+                <label for="co-email">Correo Electrónico</label>
+                <input type="email" id="co-email" class="form-control" placeholder="E.g. lorena@gmail.com">
+            </div>
+            <div class="form-group">
+                <label for="co-depto">Departamento</label>
+                <select id="co-depto" class="form-control">
+                    <option value="">Selecciona Departamento...</option>
+                    ${deptoOptions}
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="co-municipio">Municipio</label>
+                <select id="co-municipio" class="form-control" disabled>
+                    <option value="">Selecciona Municipio...</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="co-address">Dirección de Entrega *</label>
+                <textarea id="co-address" class="form-control" required placeholder="Dirección completa para envío..."></textarea>
+            </div>
+            <div class="form-group">
+                <label for="co-ref">Punto de Referencia</label>
+                <input type="text" id="co-ref" class="form-control" placeholder="Frente a parque, etc...">
+            </div>
+            <div class="form-group">
+                <label for="co-contact">Contacto Adicional</label>
+                <input type="text" id="co-contact" class="form-control" placeholder="Nombre y telf del familiar...">
+            </div>
+            <div class="row" style="display: flex; gap: 1rem;">
+                <div class="form-group" style="flex: 1;">
+                    <label for="co-doctype">Tipo Documento</label>
+                    <select id="co-doctype" class="form-control">
+                        <option value="DUI">DUI</option>
+                        <option value="NIT">NIT</option>
+                    </select>
+                </div>
+                <div class="form-group" style="flex: 1;">
+                    <label for="co-docnum">Número Doc</label>
+                    <input type="text" id="co-docnum" class="form-control" placeholder="00000000-0">
+                </div>
+            </div>
+        </form>
+    `;
+
+    const footerHTML = `
+        <button class="btn btn-secondary" onclick="closeModal()">Cancelar</button>
+        <button class="btn btn-primary" onclick="submitRegisterClientFromOrderForm()">Guardar Cliente</button>
+    `;
+
+    openModal('Registrar Nuevo Cliente', bodyHTML, footerHTML);
+
+    // Setup dynamic municipality list filtering
+    const deptoSelect = document.getElementById('co-depto');
+    const muniSelect = document.getElementById('co-municipio');
+
+    deptoSelect.onchange = (e) => {
+        const deptoId = e.target.value;
+        if (!deptoId) {
+            muniSelect.innerHTML = '<option value="">Selecciona Municipio...</option>';
+            muniSelect.disabled = true;
+            return;
+        }
+
+        const filteredMunis = municipalities.filter(m => String(m.depto_id) === String(deptoId));
+        muniSelect.innerHTML = '<option value="">Selecciona Municipio...</option>' + 
+            filteredMunis.map(m => `<option value="${m.id}">${m.name}</option>`).join('');
+        muniSelect.disabled = false;
+    };
+};
+
+window.submitRegisterClientFromOrderForm = async function() {
+    const form = document.getElementById('frm-register-client-order');
+    if (!form.reportValidity()) return;
+
+    const client = {
+        nombre: document.getElementById('co-name').value,
+        telefono: document.getElementById('co-phone').value,
+        correo: document.getElementById('co-email').value || null,
+        depto: document.getElementById('co-depto').value || null,
+        municipio: document.getElementById('co-municipio').value || null,
+        direccion: document.getElementById('co-address').value,
+        punto_referencia: document.getElementById('co-ref').value || null,
+        contacto_adicional: document.getElementById('co-contact').value || null,
+        tipo_doc: document.getElementById('co-doctype').value || null,
+        num_doc: document.getElementById('co-docnum').value || null,
+        usuario: window.currentUser
+    };
+
+    try {
+        const newClient = await api.createClient(client);
+        closeModal();
+        showToast("¡Cliente registrado exitosamente!", "success");
+
+        // Reload clients list in the dropdown
+        const updatedClients = await api.getClients();
+        const clientSelect = document.getElementById('o-client');
+        
+        if (clientSelect) {
+            // Re-render select options
+            clientSelect.innerHTML = '<option value="">Selecciona un cliente...</option>' +
+                updatedClients.map(c => `<option value="${c.id}">${c.nombre} (${c.telefono || ''})</option>`).join('');
+            
+            // Auto-select the newly created client
+            clientSelect.value = newClient.id;
+            
+            // Trigger change event to autofill phone, address, and dropdowns
+            clientSelect.dispatchEvent(new Event('change'));
+        }
+    } catch(err) {
+        showToast(`Error al guardar cliente: ${err.message}`, "danger");
     }
 };
