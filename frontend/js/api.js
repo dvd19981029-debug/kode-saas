@@ -144,13 +144,13 @@ const api = {
         return data;
     },
 
-    async markDetailStatus(detailId, estado) {
+    async markDetailStatus(detailId, estado, part) {
         if (!this.isOnline()) {
             throw new Error("Esta operación requiere conexión a internet.");
         }
         return await this.request('/order-details/mark-status', {
             method: 'POST',
-            body: JSON.stringify({ detailId, estado })
+            body: JSON.stringify({ detailId, estado, part })
         });
     },
 

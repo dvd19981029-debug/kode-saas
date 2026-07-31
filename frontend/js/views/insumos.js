@@ -116,16 +116,61 @@ async function renderInsumos(container) {
         clientMap[c.id] = c.nombre;
     });
 
-    // 1. Process Pending Details Tab
-    const pendingDetails = details.filter(d => 
-        (d.estado === 'Registrado' || d.estado === 'registrado') && 
-        orderMap[d.pedido_id] !== 'Cancelado'
-    );
+    // 1. Process Pending Details Tab (Split Plus version into 1 Oz and 0.5 Oz portions)
+    const pendingInsumoItems = [];
+    details.forEach(d => {
+        if (orderMap[d.pedido_id] === 'Cancelado') return;
+
+        // If the overall status is not final
+        if (d.estado !== 'Insumos Comprados' && d.estado !== 'Sacado del Stock' && d.estado !== 'Insumos comprados') {
+            if (d.version === 'Plus') {
+                // Check if the 1 Oz portion is pending
+                const e1 = d.estado_1oz || d.estado || 'Registrado';
+                const is1ozPending = e1 !== 'Insumos Comprados' && e1 !== 'Sacado del Stock';
+                
+                // Check if the 0.5 Oz portion is pending
+                const e2 = d.estado_05oz || d.estado || 'Registrado';
+                const is05ozPending = e2 !== 'Insumos Comprados' && e2 !== 'Sacado del Stock';
+                
+                if (is1ozPending) {
+                    pendingInsumoItems.push({
+                        ...d,
+                        insumo_id: `${d.id}-1oz`,
+                        insumo_tipo: '1 Oz',
+                        insumo_part: '1oz',
+                        insumo_estado: e1
+                    });
+                }
+                if (is05ozPending) {
+                    pendingInsumoItems.push({
+                        ...d,
+                        insumo_id: `${d.id}-0.5oz`,
+                        insumo_tipo: '0.5 Oz',
+                        insumo_part: '05oz',
+                        insumo_estado: e2
+                    });
+                }
+            } else {
+                // Normal version only has 1 Oz portion
+                const e1 = d.estado_1oz || d.estado || 'Registrado';
+                const is1ozPending = e1 !== 'Insumos Comprados' && e1 !== 'Sacado del Stock';
+                if (is1ozPending) {
+                    pendingInsumoItems.push({
+                        ...d,
+                        insumo_id: d.id, // standard detail id
+                        insumo_tipo: '1 Oz',
+                        insumo_part: '1oz',
+                        insumo_estado: e1
+                    });
+                }
+            }
+        }
+    });
 
     // Calculate Consolidated Summary
     const consolidatedMap = {};
-    pendingDetails.forEach(d => {
-        const key = d.contratipo || `Código: ${d.kodigo}`;
+    pendingInsumoItems.forEach(item => {
+        const key = `${item.contratipo || 'Desconocido'} (${item.insumo_tipo})`;
         consolidatedMap[key] = (consolidatedMap[key] || 0) + 1;
     });
 
@@ -163,7 +208,7 @@ async function renderInsumos(container) {
     const tableBody = document.getElementById('insumos-list');
     if (tableBody) {
         tableBody.innerHTML = '';
-        if (pendingDetails.length === 0) {
+        if (pendingInsumoItems.length === 0) {
             tableBody.innerHTML = `
                 <tr>
                     <td colspan="7" style="text-align: center; color: var(--text-secondary); padding: 3rem;">
@@ -172,20 +217,20 @@ async function renderInsumos(container) {
                 </tr>
             `;
         } else {
-            pendingDetails.forEach(d => {
+            pendingInsumoItems.forEach(item => {
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
-                    <td><strong>${d.id}</strong></td>
-                    <td><a href="/pedidos" onclick="routeTo(event, 'pedidos')"><strong class="order-id-Registrado">${d.pedido_id}</strong></a></td>
-                    <td><strong>${d.kodigo}</strong> - ${d.contratipo || 'Desconocido'}</td>
-                    <td><span class="badge ${d.version === 'Plus' ? 'badge-insumos' : 'badge-enviado'}">${d.version || 'Normal'}</span></td>
-                    <td><strong>$${(parseFloat(d.precio) || 20.0).toFixed(2)}</strong></td>
-                    <td>${d.usuario || 'N/A'}</td>
+                    <td><strong>${item.insumo_id}</strong></td>
+                    <td><a href="/pedidos" onclick="routeTo(event, 'pedidos')"><strong class="order-id-Registrado">${item.pedido_id}</strong></a></td>
+                    <td><strong>${item.kodigo}</strong> - ${item.contratipo || 'Desconocido'} (${item.insumo_tipo})</td>
+                    <td><span class="badge ${item.version === 'Plus' ? 'badge-insumos' : 'badge-enviado'}">${item.version || 'Normal'}</span></td>
+                    <td><strong>$${(parseFloat(item.precio) || 20.0).toFixed(2)}</strong></td>
+                    <td>${item.usuario || 'N/A'}</td>
                     <td style="display: flex; gap: 0.5rem;">
-                        <button class="btn btn-warning btn-sm" onclick="markInsumoStatus('${d.id}', 'Insumos Comprados')" style="padding: 0.4rem 0.8rem; font-size: 0.8rem;">
+                        <button class="btn btn-warning btn-sm" onclick="markInsumoStatus('${item.id}', '${item.insumo_part}', 'Insumos Comprados')" style="padding: 0.4rem 0.8rem; font-size: 0.8rem;">
                             <i class="fa-solid fa-dolly"></i> Comprado
                         </button>
-                        <button class="btn btn-secondary btn-sm" onclick="markInsumoStatus('${d.id}', 'Sacado del Stock')" style="padding: 0.4rem 0.8rem; font-size: 0.8rem; border-color: var(--color-entregado); color: var(--color-entregado);">
+                        <button class="btn btn-secondary btn-sm" onclick="markInsumoStatus('${item.id}', '${item.insumo_part}', 'Sacado del Stock')" style="padding: 0.4rem 0.8rem; font-size: 0.8rem; border-color: var(--color-entregado); color: var(--color-entregado);">
                             <i class="fa-solid fa-box-open"></i> Sacar del Stock
                         </button>
                     </td>
@@ -370,9 +415,9 @@ window.switchInsumosTab = function(tabName) {
     renderInsumos(document.getElementById('main-content'));
 };
 
-window.markInsumoStatus = async function(detailId, newStatus) {
+window.markInsumoStatus = async function(detailId, part, newStatus) {
     try {
-        const res = await api.markDetailStatus(detailId, newStatus);
+        const res = await api.markDetailStatus(detailId, newStatus, part);
         showToast(`Insumo marcado como: ${newStatus}`, "success");
         if (res.orderUpdated) {
             showToast(`¡El pedido ${res.orderId} cambió su estado a Insumos Comprados!`, "warning");

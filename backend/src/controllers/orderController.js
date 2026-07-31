@@ -133,7 +133,7 @@ exports.getOrderDetails = async (req, res) => {
 
 exports.markDetailStatus = async (req, res) => {
     try {
-        const { detailId, estado } = req.body;
+        const { detailId, estado, part } = req.body;
         if (!detailId || !estado) {
             return res.status(400).json({ error: "Faltan parámetros" });
         }
@@ -145,7 +145,44 @@ exports.markDetailStatus = async (req, res) => {
         }
 
         const detailData = detailDoc.data();
-        await detailRef.update({ estado });
+        const updateData = {};
+
+        if (part === '1oz') {
+            updateData.estado_1oz = estado;
+        } else if (part === '05oz') {
+            updateData.estado_05oz = estado;
+        } else {
+            // Standard update (Normal version, or full update)
+            updateData.estado = estado;
+            updateData.estado_1oz = estado;
+            updateData.estado_05oz = estado;
+        }
+
+        // Determine the overall state of the detail item
+        // If version is Plus, it needs both parts to be bought/sacado
+        const v = detailData.version || 'Normal';
+        const e1 = part === '1oz' ? estado : (detailData.estado_1oz || detailData.estado || 'Registrado');
+        const e2 = part === '05oz' ? estado : (detailData.estado_05oz || detailData.estado || 'Registrado');
+
+        const isE1Done = e1 === 'Insumos Comprados' || e1 === 'Sacado del Stock';
+        const isE2Done = e2 === 'Insumos Comprados' || e2 === 'Sacado del Stock';
+
+        if (v === 'Plus') {
+            if (isE1Done && isE2Done) {
+                updateData.estado = 'Insumos Comprados';
+            } else {
+                updateData.estado = 'Registrado'; // Still pending overall
+            }
+        } else {
+            // Normal version only needs e1
+            if (isE1Done) {
+                updateData.estado = 'Insumos Comprados';
+            } else {
+                updateData.estado = 'Registrado';
+            }
+        }
+
+        await detailRef.update(updateData);
 
         // Check if all other details in the same order are "Insumos Comprados" or "Sacado del Stock"
         const orderId = detailData.pedido_id;
@@ -154,8 +191,8 @@ exports.markDetailStatus = async (req, res) => {
         let allBought = true;
         detailsSnap.forEach(doc => {
             const d = doc.data();
-            // If checking the current modified detail, use the new status
-            const currentStatus = doc.id === detailId ? estado : d.estado;
+            // If checking the current modified detail, use the new overall status
+            const currentStatus = doc.id === detailId ? updateData.estado : d.estado;
             if (currentStatus !== 'Insumos comprados' && currentStatus !== 'Insumos Comprados' && currentStatus !== 'Sacado del Stock') {
                 allBought = false;
             }
