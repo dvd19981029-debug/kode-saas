@@ -31,16 +31,8 @@ async function renderConfiguracion(container) {
                     <label for="cfg-c807-sim">Modo Simulación C807</label>
                     <select id="cfg-c807-sim" class="form-control">
                         <option value="true">Sí (Genera tracking provisional y no envía a C807)</option>
-                        <option value="false">No (Envía peticiones usando el token de la hoja Auth)</option>
+                        <option value="false">No (Envía peticiones reales y dinámicas al API de C807)</option>
                     </select>
-                </div>
-                <div class="form-group">
-                    <label for="cfg-c807-user">C807 Usuario API</label>
-                    <input type="text" id="cfg-c807-user" class="form-control">
-                </div>
-                <div class="form-group">
-                    <label for="cfg-c807-pass">C807 Contraseña API</label>
-                    <input type="password" id="cfg-c807-pass" class="form-control">
                 </div>
 
                 <div style="display: flex; justify-content: flex-end; gap: 0.75rem; margin-top: 2rem;">
@@ -56,8 +48,6 @@ async function renderConfiguracion(container) {
         document.getElementById('cfg-goal').value = config.monthly_sales_goal || 5000;
         document.getElementById('cfg-llama-key').value = config.facturallama_api_key || '';
         document.getElementById('cfg-c807-sim').value = config.c807_simulado !== false ? 'true' : 'false';
-        document.getElementById('cfg-c807-user').value = config.c807_username || '';
-        document.getElementById('cfg-c807-pass').value = config.c807_password || '';
 
         const form = document.getElementById('frm-config');
         form.onsubmit = async (e) => {
@@ -65,9 +55,7 @@ async function renderConfiguracion(container) {
             const configData = {
                 monthly_sales_goal: parseFloat(document.getElementById('cfg-goal').value),
                 facturallama_api_key: document.getElementById('cfg-llama-key').value,
-                c807_simulado: document.getElementById('cfg-c807-sim').value === 'true',
-                c807_username: document.getElementById('cfg-c807-user').value,
-                c807_password: document.getElementById('cfg-c807-pass').value
+                c807_simulado: document.getElementById('cfg-c807-sim').value === 'true'
             };
 
             try {
