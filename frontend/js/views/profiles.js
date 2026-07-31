@@ -43,20 +43,28 @@ async function renderProfiles(container) {
 
         if (employees && employees.length > 0) {
             employees.forEach(emp => {
+                // Skip empty/corrupted records to avoid cluttering Netflix selector
+                if (!emp.nombre && !emp.correo) return;
+
+                const empName = emp.nombre || emp.correo || 'Colaborador';
+                const empEmail = emp.correo || 'N/A';
+                const empArea = emp.area || 'Ventas';
+                const empRole = (empArea === 'Gerencia' || (empEmail && empEmail.includes('admin'))) ? 'Administrador' : 'Vendedor';
+
                 // Determine a nice color based on their name hash
                 const colors = ['#ec4899', '#10b981', '#3b82f6', '#8b5cf6', '#06b6d4'];
                 let hash = 0;
-                for (let i = 0; i < emp.nombre.length; i++) {
-                    hash = emp.nombre.charCodeAt(i) + ((hash << 5) - hash);
+                for (let i = 0; i < empName.length; i++) {
+                    hash = empName.charCodeAt(i) + ((hash << 5) - hash);
                 }
                 const color = colors[Math.abs(hash) % colors.length];
 
                 profiles.push({
                     id: emp.id,
-                    nombre: emp.nombre,
-                    correo: emp.correo,
-                    area: emp.area || 'Ventas',
-                    role: (emp.area === 'Gerencia' || emp.correo.includes('admin')) ? 'Administrador' : 'Vendedor',
+                    nombre: empName,
+                    correo: empEmail,
+                    area: empArea,
+                    role: empRole,
                     color: color
                 });
             });
