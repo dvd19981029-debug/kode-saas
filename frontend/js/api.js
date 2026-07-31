@@ -217,6 +217,36 @@ const api = {
         });
     },
 
+    // Roles and Permissions
+    async getRoles() {
+        if (!this.isOnline()) {
+            return await localforage.getItem('cached_roles') || [];
+        }
+        const data = await this.request('/roles');
+        await localforage.setItem('cached_roles', data);
+        return data;
+    },
+
+    async createRole(nombre, vistas = []) {
+        return await this.request('/roles', {
+            method: 'POST',
+            body: JSON.stringify({ nombre, vistas })
+        });
+    },
+
+    async updateRole(id, roleData) {
+        return await this.request(`/roles/${id}`, {
+            method: 'PUT',
+            body: JSON.stringify(roleData)
+        });
+    },
+
+    async deleteRole(id) {
+        return await this.request(`/roles/${id}`, {
+            method: 'DELETE'
+        });
+    },
+
     // Employees / Vendedores
     async getEmployees() {
         if (!this.isOnline()) {
@@ -396,7 +426,8 @@ const cacheKeyMap = {
     'config': 'cached_config',
     'payroll_payments': 'cached_payroll_payments',
     'commission_payments': 'cached_commission_payments',
-    'payment_methods': 'cached_payment_methods'
+    'payment_methods': 'cached_payment_methods',
+    'roles': 'cached_roles'
 };
 
 api.initRealtimeSync = function() {

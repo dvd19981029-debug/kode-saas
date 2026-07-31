@@ -119,12 +119,26 @@ async function loadRoute(routeName, isSilentRefresh = false) {
         return;
     }
 
-    // Role-based route protection: Vendedores cannot access configuracion, empleados, or planilla views
-    if (window.currentProfile && window.currentProfile.role === 'Vendedor') {
-        if (routeName === 'configuracion' || routeName === 'empleados' || routeName === 'planilla') {
-            showToast("Acceso restringido para asesores.", "warning");
-            window.location.hash = 'dashboard';
-            return;
+    // Dynamic Role-based route protection
+    if (window.currentProfile && routeName !== 'login' && routeName !== 'profiles') {
+        const allowedViewsStr = localStorage.getItem('kode_allowed_views');
+        if (allowedViewsStr) {
+            const allowedViews = JSON.parse(allowedViewsStr);
+            let permissionKey = routeName;
+            if (routeName === 'nuevo_pedido') permissionKey = 'pedidos';
+            
+            if (!allowedViews.includes(permissionKey)) {
+                showToast(`Acceso restringido para el rol: ${window.currentProfile.role}`, "warning");
+                window.location.hash = 'dashboard';
+                return;
+            }
+        } else if (window.currentProfile.role === 'Vendedor') {
+            // Fallback static rules if offline/sync issue
+            if (routeName === 'configuracion' || routeName === 'empleados' || routeName === 'planilla') {
+                showToast("Acceso restringido para asesores.", "warning");
+                window.location.hash = 'dashboard';
+                return;
+            }
         }
     }
 
@@ -162,11 +176,22 @@ async function loadRoute(routeName, isSilentRefresh = false) {
     menuItems.forEach(item => {
         const itemRoute = item.getAttribute('data-route');
         
-        // Hide config, employees, and planilla from Vendedores
-        if (window.userRole === 'Vendedor' && (itemRoute === 'empleados' || itemRoute === 'planilla' || itemRoute === 'configuracion')) {
-            item.style.display = 'none';
+        // Dynamic sidebar menu link visibility
+        const allowedViewsStr = localStorage.getItem('kode_allowed_views');
+        if (allowedViewsStr) {
+            const allowedViews = JSON.parse(allowedViewsStr);
+            if (!allowedViews.includes(itemRoute)) {
+                item.style.display = 'none';
+            } else {
+                item.style.display = '';
+            }
         } else {
-            item.style.display = '';
+            // Fallback static rules if offline
+            if (window.userRole === 'Vendedor' && (itemRoute === 'empleados' || itemRoute === 'planilla' || itemRoute === 'configuracion')) {
+                item.style.display = 'none';
+            } else {
+                item.style.display = '';
+            }
         }
 
         if (itemRoute === routeName) {

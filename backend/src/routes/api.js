@@ -169,6 +169,71 @@ router.delete('/payment-methods/:id', async (req, res) => {
     }
 });
 
+// Roles and Permisos (Roles)
+router.get('/roles', async (req, res) => {
+    try {
+        const snapshot = await db.collection('roles').get();
+        let list = [];
+        snapshot.forEach(doc => {
+            list.push({ id: doc.id, ...doc.data() });
+        });
+        if (list.length === 0) {
+            // Seed defaults
+            const defaults = [
+                { nombre: "Administrador", vistas: ["dashboard", "pedidos", "insumos", "clientes", "empleados", "planilla", "configuracion"] },
+                { nombre: "Vendedor", vistas: ["dashboard", "pedidos", "clientes"] },
+                { nombre: "Supervisor", vistas: ["dashboard", "pedidos", "insumos", "clientes"] }
+            ];
+            for (const r of defaults) {
+                const docRef = await db.collection('roles').add(r);
+                list.push({ id: docRef.id, ...r });
+            }
+        }
+        res.json(list);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+router.post('/roles', async (req, res) => {
+    try {
+        const { nombre, vistas } = req.body;
+        if (!nombre) {
+            return res.status(400).json({ error: "El nombre es obligatorio" });
+        }
+        const newRole = { nombre, vistas: vistas || [] };
+        const docRef = await db.collection('roles').add(newRole);
+        res.status(201).json({ id: docRef.id, ...newRole });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+router.put('/roles/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { vistas, nombre } = req.body;
+        const updateData = {};
+        if (vistas !== undefined) updateData.vistas = vistas;
+        if (nombre !== undefined) updateData.nombre = nombre;
+        
+        await db.collection('roles').doc(id).set(updateData, { merge: true });
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+router.delete('/roles/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        await db.collection('roles').doc(id).delete();
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 // Employees & Commissions
 router.get('/employees', employeeController.getEmployees);
 router.put('/employees/:id', employeeController.updateEmployee);

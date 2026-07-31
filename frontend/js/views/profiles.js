@@ -49,7 +49,7 @@ async function renderProfiles(container) {
                 const empName = emp.nombre || emp.correo || 'Colaborador';
                 const empEmail = emp.correo || 'N/A';
                 const empArea = emp.area || 'Ventas';
-                const empRole = (empArea === 'Gerencia' || (empEmail && empEmail.includes('admin'))) ? 'Administrador' : 'Vendedor';
+                const empRole = emp.role || ((empArea === 'Gerencia' || (empEmail && empEmail.includes('admin'))) ? 'Administrador' : 'Vendedor');
 
                 // Determine a nice color based on their name hash
                 const colors = ['#ec4899', '#10b981', '#3b82f6', '#8b5cf6', '#06b6d4'];
@@ -148,11 +148,34 @@ async function renderProfiles(container) {
     }
 }
 
-function selectProfile(profile) {
+async function selectProfile(profile) {
     window.currentProfile = profile;
     window.userRole = profile.role;
     localStorage.setItem('kode_current_profile', JSON.stringify(profile));
     
+    // Fetch allowed views for role
+    try {
+        const roles = await api.getRoles();
+        const found = roles.find(r => r.nombre.toLowerCase() === profile.role.toLowerCase());
+        if (found) {
+            localStorage.setItem('kode_allowed_views', JSON.stringify(found.vistas));
+        } else {
+            // Default fallbacks
+            if (profile.role === 'Administrador') {
+                localStorage.setItem('kode_allowed_views', JSON.stringify(["dashboard", "pedidos", "insumos", "clientes", "empleados", "planilla", "configuracion"]));
+            } else {
+                localStorage.setItem('kode_allowed_views', JSON.stringify(["dashboard", "pedidos", "clientes"]));
+            }
+        }
+    } catch(err) {
+        console.warn("Could not sync role permissions, using default fallbacks:", err);
+        if (profile.role === 'Administrador') {
+            localStorage.setItem('kode_allowed_views', JSON.stringify(["dashboard", "pedidos", "insumos", "clientes", "empleados", "planilla", "configuracion"]));
+        } else {
+            localStorage.setItem('kode_allowed_views', JSON.stringify(["dashboard", "pedidos", "clientes"]));
+        }
+    }
+
     showToast(`Ingresaste como ${profile.nombre}`, "success");
 
     // Re-verify layouts and route to dashboard
