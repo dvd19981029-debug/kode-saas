@@ -119,7 +119,7 @@ async function renderNuevoPedido(container) {
                         <span style="font-size: 0.85rem; color: var(--text-secondary);">Monto Total:</span>
                         <h2 style="color: var(--primary);" id="order-total-price">$0.00</h2>
                     </div>
-                    <button class="btn btn-success" onclick="saveOrder()" style="padding: 0.75rem 2rem;">
+                    <button id="btn-save-order" class="btn btn-success" onclick="saveOrder()" style="padding: 0.75rem 2rem;">
                         <i class="fa-solid fa-floppy-disk"></i> Registrar Pedido
                     </button>
                 </div>
@@ -276,6 +276,12 @@ window.saveOrder = async function() {
         return;
     }
 
+    const saveBtn = document.getElementById('btn-save-order');
+    if (saveBtn) {
+        saveBtn.disabled = true;
+        saveBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Guardando...';
+    }
+
     const orderData = {
         cliente_id: clientSelect.value,
         telefono: phoneInput.value || null,
@@ -293,6 +299,10 @@ window.saveOrder = async function() {
         window.location.hash = 'pedidos';
     } catch(err) {
         showToast(`Error al guardar el pedido: ${err.message}`, "danger");
+        if (saveBtn) {
+            saveBtn.disabled = false;
+            saveBtn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> Registrar Pedido';
+        }
     }
 };
 
@@ -359,7 +369,7 @@ window.openRegisterClientFromOrderModal = async function() {
 
     const footerHTML = `
         <button class="btn btn-secondary" onclick="closeModal()">Cancelar</button>
-        <button class="btn btn-primary" onclick="submitRegisterClientFromOrderForm()">Guardar Cliente</button>
+        <button id="btn-save-client-order" class="btn btn-primary" onclick="submitRegisterClientFromOrderForm()">Guardar Cliente</button>
     `;
 
     openModal('Registrar Nuevo Cliente', bodyHTML, footerHTML);
@@ -386,6 +396,12 @@ window.openRegisterClientFromOrderModal = async function() {
 window.submitRegisterClientFromOrderForm = async function() {
     const form = document.getElementById('frm-register-client-order');
     if (!form.reportValidity()) return;
+
+    const saveBtn = document.getElementById('btn-save-client-order');
+    if (saveBtn) {
+        saveBtn.disabled = true;
+        saveBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Guardando...';
+    }
 
     const client = {
         nombre: document.getElementById('co-name').value,
@@ -424,5 +440,9 @@ window.submitRegisterClientFromOrderForm = async function() {
         }
     } catch(err) {
         showToast(`Error al guardar cliente: ${err.message}`, "danger");
+        if (saveBtn) {
+            saveBtn.disabled = false;
+            saveBtn.innerHTML = 'Guardar Cliente';
+        }
     }
 };
