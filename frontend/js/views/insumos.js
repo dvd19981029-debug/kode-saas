@@ -59,32 +59,39 @@ async function renderInsumos(container) {
                 </div>
             </div>
 
-            <!-- PANEL 2: Ready Orders -->
+            <!-- PANEL 2: Ready Orders (Netflix/AppSheet split master-detail view) -->
             <div id="panel-ready-orders" style="display: ${isReadyActive ? 'block' : 'none'};">
-                <div class="card">
-                    <h3 style="margin-bottom: 1rem;"><i class="fa-solid fa-boxes-packing"></i> Pedidos Listos para Despacho</h3>
-                    <div class="table-responsive">
-                        <table class="table">
-                            <thead>
-                                <tr>
-                                    <th>ID Pedido</th>
-                                    <th>Fecha</th>
-                                    <th>Cliente</th>
-                                    <th>Monto Total</th>
-                                    <th>Factura (FacturaLlama)</th>
-                                    <th>Despacho (C807)</th>
-                                    <th>Acciones</th>
-                                </tr>
-                            </thead>
-                            <tbody id="ready-orders-list">
-                                <tr>
-                                    <td colspan="7" style="text-align: center; color: var(--text-secondary); padding: 3rem;">
-                                        <i class="fa-solid fa-spinner fa-spin" style="font-size: 2rem; margin-bottom: 0.5rem; display: block;"></i>
-                                        Cargando listado de pedidos listos...
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
+                <div style="display: grid; grid-template-columns: 2fr 3fr; gap: 1.5rem; align-items: start;">
+                    <!-- Left: Orders list -->
+                    <div class="card" style="padding: 1.25rem;">
+                        <h3 style="margin-bottom: 1rem; font-size: 1.1rem;"><i class="fa-solid fa-list"></i> Pedidos Listos para Fabricar</h3>
+                        <div class="table-responsive">
+                            <table class="table" style="font-size: 0.85rem;">
+                                <thead>
+                                    <tr>
+                                        <th>ID Pedido</th>
+                                        <th>Fecha</th>
+                                        <th>Cliente</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="ready-orders-list">
+                                    <tr>
+                                        <td colspan="3" style="text-align: center; color: var(--text-secondary); padding: 3rem;">
+                                            <i class="fa-solid fa-spinner fa-spin" style="font-size: 2rem; margin-bottom: 0.5rem; display: block;"></i>
+                                            Cargando pedidos...
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Right: Perfumes details of the selected order -->
+                    <div class="card" id="ready-order-details-card" style="padding: 1.5rem;">
+                        <div style="text-align: center; color: var(--text-muted); padding: 3rem;">
+                            <i class="fa-solid fa-boxes-packing" style="font-size: 3.5rem; margin-bottom: 1rem; display: block; opacity: 0.5;"></i>
+                            <p>Selecciona un pedido de la lista para ver sus fragancias y gestionar el despacho.</p>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -193,84 +200,166 @@ async function renderInsumos(container) {
         o.estado === 'Insumos comprados' || o.estado === 'Insumos Comprados'
     );
 
+    // Auto-select first order if none is selected
+    if (readyOrders.length > 0) {
+        if (!window.selectedInsumosOrderId || !readyOrders.some(o => o.id === window.selectedInsumosOrderId)) {
+            window.selectedInsumosOrderId = readyOrders[0].id;
+        }
+    } else {
+        window.selectedInsumosOrderId = null;
+    }
+
     const readyOrdersBody = document.getElementById('ready-orders-list');
     if (readyOrdersBody) {
         readyOrdersBody.innerHTML = '';
         if (readyOrders.length === 0) {
             readyOrdersBody.innerHTML = `
                 <tr>
-                    <td colspan="7" style="text-align: center; color: var(--text-secondary); padding: 3rem;">
+                    <td colspan="3" style="text-align: center; color: var(--text-secondary); padding: 3rem;">
                         No hay pedidos en estado "Insumos Comprados".
                     </td>
                 </tr>
             `;
         } else {
             readyOrders.forEach(o => {
+                const isSelected = o.id === window.selectedInsumosOrderId;
                 const tr = document.createElement('tr');
-                
-                // DTE (FacturaLlama) Column
-                let dteHtml = '';
-                if (o.estado_fact === 'Generada') {
-                    dteHtml = `
-                        <a href="${o.mhDteUrl}" target="_blank" class="badge badge-entregado" style="display:inline-flex; align-items:center; gap:0.25rem;">
-                            <i class="fa-solid fa-file-invoice"></i> Generada
-                        </a>
-                    `;
-                } else {
-                    dteHtml = `
-                        <button class="btn btn-secondary btn-sm" onclick="openFacturaModal('${o.id}')" style="padding: 0.25rem 0.5rem; font-size: 0.75rem;">
-                            <i class="fa-solid fa-file-invoice-dollar" style="color:var(--primary);"></i> Emitir DTE
-                        </button>
-                    `;
+                tr.style.cursor = 'pointer';
+                if (isSelected) {
+                    tr.style.backgroundColor = 'rgba(99, 102, 241, 0.15)';
+                    tr.style.borderLeft = '4px solid var(--primary)';
                 }
-
-                // C807 Dispatch Column
-                let despachoHtml = '';
-                if (o.estado_guia === 'Generada') {
-                    const liveStatus = o.estado_c807 ? `<span style="font-size:0.72rem; font-weight:600; color:#f59e0b; display:inline-flex; align-items:center; gap:0.2rem; margin-top:0.1rem;"><i class="fa-solid fa-clock-rotate-left" style="font-size:0.65rem;"></i> ${o.estado_c807}</span>` : '';
-                    despachoHtml = `
-                        <div style="display:flex; flex-direction:column; gap:0.25rem; font-size:0.8rem;">
-                            <a href="${o.link_rastreo}" target="_blank" style="font-weight:700; color:var(--color-enviado); text-decoration:none;">
-                                <i class="fa-solid fa-truck-fast"></i> ${o.num_rastreo}
-                            </a>
-                            <span style="font-size:0.7rem; color:var(--text-muted);">C807 Express</span>
-                            ${liveStatus}
-                        </div>
-                    `;
-                } else {
-                    despachoHtml = `
-                        <button class="btn btn-secondary btn-sm" onclick="generateC807Guia('${o.id}')" style="padding: 0.25rem 0.5rem; font-size: 0.75rem;">
-                            <i class="fa-solid fa-arrow-up-right-from-square" style="color:var(--color-enviado);"></i> Generar Guía
-                        </button>
-                    `;
-                }
-
-                // Actions Column
-                const actionsHtml = `
-                    <div style="display:flex; gap:0.25rem;">
-                        <button class="btn btn-secondary btn-sm" onclick="changeOrderStatusFromInsumos('${o.id}', 'Enviado')" style="padding: 0.25rem 0.5rem;" title="Marcar como Enviado">
-                            <i class="fa-solid fa-truck-ramp-box" style="color:var(--color-enviado);"></i>
-                        </button>
-                        <select onchange="changeOrderStatusFromInsumos('${o.id}', this.value)" class="form-control" style="padding:0.2rem; font-size:0.75rem; width:auto; height:30px;">
-                            <option value="">Estado...</option>
-                            <option value="Enviado">Enviado</option>
-                            <option value="Entregado">Entregado</option>
-                            <option value="Cancelado">Cancelado</option>
-                        </select>
-                    </div>
-                `;
+                tr.onclick = () => {
+                    window.selectedInsumosOrderId = o.id;
+                    renderInsumos(container); // Quick silent update
+                };
 
                 tr.innerHTML = `
-                    <td><strong class="order-id-Registrado">${o.id}</strong></td>
+                    <td><strong style="color: var(--primary);">${o.id}</strong></td>
                     <td>${o.fecha_pedido ? new Date(o.fecha_pedido).toLocaleDateString() : 'N/A'}</td>
                     <td><strong>${clientMap[o.cliente_id] || 'Desconocido'}</strong></td>
-                    <td><strong>$${(o.monto_total || 0).toFixed(2)}</strong></td>
-                    <td>${dteHtml}</td>
-                    <td>${despachoHtml}</td>
-                    <td>${actionsHtml}</td>
                 `;
                 readyOrdersBody.appendChild(tr);
             });
+        }
+    }
+
+    // Render selected order details on the right card
+    const readyOrderDetailsCard = document.getElementById('ready-order-details-card');
+    if (readyOrderDetailsCard) {
+        if (!window.selectedInsumosOrderId) {
+            readyOrderDetailsCard.innerHTML = `
+                <div style="text-align: center; color: var(--text-muted); padding: 3rem;">
+                    <i class="fa-solid fa-boxes-packing" style="font-size: 3.5rem; margin-bottom: 1rem; display: block; opacity: 0.5;"></i>
+                    <p>Selecciona un pedido de la lista para ver sus fragancias y gestionar el despacho.</p>
+                </div>
+            `;
+        } else {
+            const selectedOrder = readyOrders.find(o => o.id === window.selectedInsumosOrderId);
+            if (!selectedOrder) return;
+
+            const selectedOrderDetails = details.filter(d => d.pedido_id === selectedOrder.id);
+
+            // DTE Status / Button
+            let dteBtnHtml = '';
+            if (selectedOrder.estado_fact === 'Generada') {
+                dteBtnHtml = `
+                    <a href="${selectedOrder.mhDteUrl}" target="_blank" class="btn btn-secondary btn-sm" style="display:inline-flex; align-items:center; gap:0.25rem; background-color: rgba(16, 185, 129, 0.15); border-color: var(--color-entregado); color: var(--color-entregado); font-size: 0.8rem; padding: 0.4rem 0.8rem;">
+                        <i class="fa-solid fa-file-invoice"></i> Ver DTE (MH)
+                    </a>
+                `;
+            } else {
+                dteBtnHtml = `
+                    <button class="btn btn-secondary btn-sm" onclick="openFacturaModal('${selectedOrder.id}')" style="padding: 0.4rem 0.8rem; font-size: 0.8rem; display: inline-flex; align-items: center; gap: 0.25rem;">
+                        <i class="fa-solid fa-file-invoice-dollar" style="color:var(--primary);"></i> Emitir DTE
+                    </button>
+                `;
+            }
+
+            // C807 Dispatch Status / Button
+            let c807BtnHtml = '';
+            if (selectedOrder.estado_guia === 'Generada') {
+                const liveStatus = selectedOrder.estado_c807 ? ` - ${selectedOrder.estado_c807}` : '';
+                c807BtnHtml = `
+                    <a href="${selectedOrder.link_rastreo}" target="_blank" class="btn btn-secondary btn-sm" style="display:inline-flex; align-items:center; gap:0.25rem; font-weight:700; color:var(--color-enviado); border-color: var(--color-enviado); background-color: rgba(99, 102, 241, 0.15); font-size: 0.8rem; padding: 0.4rem 0.8rem; text-decoration: none;">
+                        <i class="fa-solid fa-truck-fast"></i> Guía: ${selectedOrder.num_rastreo}${liveStatus}
+                    </a>
+                `;
+            } else {
+                c807BtnHtml = `
+                    <button class="btn btn-secondary btn-sm" onclick="generateC807Guia('${selectedOrder.id}')" style="padding: 0.4rem 0.8rem; font-size: 0.8rem; display: inline-flex; align-items: center; gap: 0.25rem;">
+                        <i class="fa-solid fa-arrow-up-right-from-square" style="color:var(--color-enviado);"></i> Generar Guía
+                    </button>
+                `;
+            }
+
+            // Status Actions
+            const statusSelectHtml = `
+                <div style="display: flex; gap: 0.5rem; align-items: center;">
+                    <button class="btn btn-success btn-sm" onclick="changeOrderStatusFromInsumos('${selectedOrder.id}', 'Enviado')" style="padding: 0.5rem 0.75rem; font-size: 0.8rem; display: inline-flex; align-items: center; gap: 0.25rem;">
+                        <i class="fa-solid fa-truck-ramp-box"></i> Despachado (Enviado)
+                    </button>
+                    <select onchange="changeOrderStatusFromInsumos('${selectedOrder.id}', this.value)" class="form-control" style="padding:0.4rem; font-size:0.8rem; width:auto; height:34px; margin: 0;">
+                        <option value="">Otro estado...</option>
+                        <option value="Entregado">Entregado</option>
+                        <option value="Cancelado">Cancelado</option>
+                    </select>
+                </div>
+            `;
+
+            // Render detailed perfumes list
+            let perfumeRowsHtml = '';
+            selectedOrderDetails.forEach(d => {
+                perfumeRowsHtml += `
+                    <tr>
+                        <td><strong>${d.kodigo}</strong></td>
+                        <td>${d.contratipo || 'Desconocido'}</td>
+                        <td><span class="badge ${d.version === 'Plus' ? 'badge-insumos' : 'badge-enviado'}">${d.version || 'Normal'}</span></td>
+                        <td><strong>$${(parseFloat(d.precio) || 20.0).toFixed(2)}</strong></td>
+                    </tr>
+                `;
+            });
+
+            readyOrderDetailsCard.innerHTML = `
+                <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 1.5rem; border-bottom: 1px solid var(--border-color); padding-bottom: 1rem; flex-wrap: wrap; gap: 1rem;">
+                    <div>
+                        <span style="font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600;">Detalle de Fabricación</span>
+                        <h3 style="color: #fff; margin: 0.15rem 0 0.25rem 0; font-size: 1.4rem;">${clientMap[selectedOrder.cliente_id] || 'Desconocido'}</h3>
+                        <span style="font-size: 0.85rem; color: var(--text-secondary); font-weight: 500;">Pedido: <strong style="color: var(--primary);">${selectedOrder.id}</strong></span>
+                    </div>
+                    <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
+                        ${dteBtnHtml}
+                        ${c807BtnHtml}
+                    </div>
+                </div>
+
+                <div style="margin-bottom: 1.5rem;">
+                    <h4 style="font-size: 0.9rem; font-weight: 600; color: var(--text-secondary); margin-bottom: 0.75rem;"><i class="fa-solid fa-bottle-droplet"></i> Fragancias Listas para Fabricar</h4>
+                    <div class="table-responsive">
+                        <table class="table" style="font-size: 0.85rem;">
+                            <thead>
+                                <tr>
+                                    <th>Código</th>
+                                    <th>Fragancia</th>
+                                    <th>Versión</th>
+                                    <th>Precio</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${perfumeRowsHtml}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div style="border-top: 1px solid var(--border-color); padding-top: 1rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+                    <div>
+                        <span style="font-size: 0.8rem; color: var(--text-muted);">Monto Total del Pedido:</span>
+                        <h3 style="color: var(--primary); margin: 0; font-weight: 700; font-size: 1.4rem;">$${(selectedOrder.monto_total || 0).toFixed(2)}</h3>
+                    </div>
+                    ${statusSelectHtml}
+                </div>
+            `;
         }
     }
 }
