@@ -336,12 +336,13 @@ button, input, select, textarea {
   width: 100%;
   border-collapse: collapse;
   text-align: left;
+  font-size: 0.9rem;
 }
 
 .table th, .table td {
   padding: 0.5rem 0.75rem;
   border-bottom: 1px solid var(--border-color);
-  font-size: 0.9rem;
+  font-size: inherit;
   vertical-align: middle;
   line-height: 1.25;
 }
