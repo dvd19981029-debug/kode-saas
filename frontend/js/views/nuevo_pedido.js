@@ -152,13 +152,17 @@ async function renderNuevoPedido(container) {
         if (client) {
             phoneInput.value = client.telefono || '';
             addressInput.value = client.direccion || '';
-            if (client.depto_id) {
-                deptoSelect.value = client.depto_id;
+            
+            const deptoVal = client.depto || client.depto_id;
+            const muniVal = client.municipio || client.municipio_id;
+            
+            if (deptoVal) {
+                deptoSelect.value = deptoVal;
                 // Trigger change to load municipalities
                 deptoSelect.dispatchEvent(new Event('change'));
-                if (client.municipio_id) {
+                if (muniVal) {
                     setTimeout(() => {
-                        muniSelect.value = client.municipio_id;
+                        muniSelect.value = muniVal;
                     }, 50);
                 }
             }
