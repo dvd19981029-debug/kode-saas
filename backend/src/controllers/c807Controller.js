@@ -170,3 +170,81 @@ exports.generateGuia = async (req, res) => {
         res.status(500).json({ error: err.message });
     }
 };
+
+exports.receiveIncomingC807 = async (req, res) => {
+    try {
+        console.log("C807 Webhook Received Payload:", JSON.stringify(req.body));
+        const { guia, codigo, estatus, observaciones, razon, pod } = req.body;
+        
+        // Log webhook payload for auditing
+        try {
+            await db.collection('dte_api_logs').add({
+                provider: 'C807',
+                type: 'Webhook',
+                trackingNumber: guia || null,
+                payload: req.body,
+                timestamp: new Date().toISOString()
+            });
+        } catch (logErr) {
+            console.error("Error saving C807 webhook log:", logErr);
+        }
+
+        if (!guia) {
+            return res.status(400).json({ error: "No se proporcionó el número de guía" });
+        }
+        
+        // Find order with this guide number (num_rastreo)
+        const ordersRef = db.collection('orders');
+        const snapshot = await ordersRef.where('num_rastreo', '==', guia).get();
+        
+        if (snapshot.empty) {
+            console.warn(`No order found matching tracking number: ${guia}`);
+            // Return 200 to acknowledge receipt so C807 doesn't keep retrying
+            return res.json({ success: false, message: "No se encontró pedido para esta guía" });
+        }
+        
+        // We'll update all orders that might share this guide number (normally just one)
+        const updatePromises = [];
+        const orderIds = [];
+        
+        snapshot.forEach(doc => {
+            const orderId = doc.id;
+            orderIds.push(orderId);
+            const orderRef = ordersRef.doc(orderId);
+            
+            const updateData = {
+                estado_c807: estatus || "",
+                codigo_estado_c807: codigo || "",
+                observaciones_c807: observaciones || "",
+                fecha_actualizacion_c807: new Date().toISOString()
+            };
+            
+            // Map status codes
+            // Code "15" is "Llegó a su destino" (Delivered)
+            if (codigo === "15" || estatus === "Llegó a su destino") {
+                updateData.estado = 'Entregado';
+                updateData.fecha_entrega = new Date().toISOString();
+            }
+            
+            // If there's an issue/non-delivery reason
+            if (razon && (typeof razon === 'string' ? razon : razon.descripcion)) {
+                updateData.razon_no_entrega = typeof razon === 'string' ? razon : razon.descripcion;
+            }
+            
+            // If there's proof of delivery (POD)
+            if (pod && pod.length > 0) {
+                updateData.pod_c807 = pod;
+            }
+            
+            updatePromises.push(orderRef.update(updateData));
+        });
+        
+        await Promise.all(updatePromises);
+        
+        console.log(`Successfully updated order(s) ${orderIds.join(', ')} status to C807 status: ${estatus}`);
+        res.json({ success: true, message: `Pedidos ${orderIds.join(', ')} actualizados correctamente` });
+    } catch (err) {
+        console.error("Error processing C807 webhook:", err);
+        res.status(500).json({ error: err.message });
+    }
+};

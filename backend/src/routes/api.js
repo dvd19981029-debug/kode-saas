@@ -157,6 +157,7 @@ router.put('/config', async (req, res) => {
 router.post('/orders/:id/factura', dteController.generateFactura);
 router.post('/orders/:id/guia', c807Controller.generateGuia);
 router.post('/webhook/dte', dteController.receiveIncomingDte);
+router.post('/webhook/c807', c807Controller.receiveIncomingC807);
 
 // Initialize global memory cache to optimize and save Firestore reads
 global.localCache = {
