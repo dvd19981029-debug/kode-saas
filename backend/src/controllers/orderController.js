@@ -47,7 +47,7 @@ exports.createOrder = async (req, res) => {
         const detailIds = [];
         
         details.forEach((det, idx) => {
-            const detailId = `DETPED-${todayStr}-${countSnap.size + idx + 1}`;
+            const detailId = `${orderId}-DET-${idx + 1}`;
             det.id = detailId;
             det.pedido_id = orderId;
             det.fecha_registro = new Date().toISOString();
