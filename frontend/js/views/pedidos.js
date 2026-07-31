@@ -69,9 +69,11 @@ async function renderPedidos(container) {
         </div>
     `;
 
-    // Load Data
-    const orders = await api.getOrders();
-    const clients = await api.getClients();
+    // Load Data Concurrently
+    const [orders, clients] = await Promise.all([
+        api.getOrders(),
+        api.getClients()
+    ]);
 
     const clientMap = {};
     clients.forEach(c => {

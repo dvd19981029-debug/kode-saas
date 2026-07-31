@@ -136,9 +136,11 @@ async function renderDashboard(container) {
     `;
 
     try {
-        const metrics = await api.getDashboardMetrics();
-        const clients = await api.getClients();
-        const orders = await api.getOrders();
+        const [metrics, clients, orders] = await Promise.all([
+            api.getDashboardMetrics(),
+            api.getClients(),
+            api.getOrders()
+        ]);
 
         if (!metrics) {
             // If offline and no cached metrics exist, render a placeholder message

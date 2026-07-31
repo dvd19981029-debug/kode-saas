@@ -179,75 +179,75 @@ async function loadRoute(routeName) {
     const mainContent = document.getElementById('main-content');
     const viewTitle = document.getElementById('view-title');
 
-    // Fade out effect
+    // Instant route load execution
     mainContent.style.opacity = '0';
-    mainContent.style.transform = 'translateY(10px)';
-    mainContent.style.transition = 'all 0.2s ease';
+    mainContent.style.transform = 'translateY(5px)';
+    mainContent.style.transition = 'none';
 
-    setTimeout(async () => {
-        try {
-            // Match routes
-            switch (routeName) {
-                case 'login':
-                    viewTitle.innerText = 'Iniciar Sesión';
-                    await renderLogin(mainContent);
-                    break;
-                case 'profiles':
-                    viewTitle.innerText = 'Seleccionar Perfil';
-                    await renderProfiles(mainContent);
-                    break;
-                case 'dashboard':
-                    viewTitle.innerText = 'Dashboard de Gestión';
-                    await renderDashboard(mainContent);
-                    break;
-                case 'pedidos':
-                    viewTitle.innerText = 'Gestión de Pedidos';
-                    await renderPedidos(mainContent);
-                    break;
-                case 'nuevo-pedido':
-                    viewTitle.innerText = 'Registrar Pedido';
-                    await renderNuevoPedido(mainContent);
-                    break;
-                case 'insumos':
-                    viewTitle.innerText = 'Productos Pendientes para Compra';
-                    await renderInsumos(mainContent);
-                    break;
-                case 'clientes':
-                    viewTitle.innerText = 'Catálogo de Clientes';
-                    await renderClientes(mainContent);
-                    break;
-                case 'empleados':
-                    viewTitle.innerText = 'Porcentaje de Comisión por Asesor';
-                    await renderEmpleados(mainContent);
-                    break;
-                case 'planilla':
-                    viewTitle.innerText = 'Planilla de Sujetos Excluidos';
-                    await renderPlanilla(mainContent);
-                    break;
-                case 'configuracion':
-                    viewTitle.innerText = 'Configuración del Sistema';
-                    await renderConfiguracion(mainContent);
-                    break;
-                default:
-                    viewTitle.innerText = 'Dashboard';
-                    await renderDashboard(mainContent);
-            }
-        } catch (err) {
-            console.error(err);
-            mainContent.innerHTML = `
-                <div class="card fade-in" style="border-color: var(--color-registrado); text-align: center; padding: 3rem;">
-                    <i class="fa-solid fa-triangle-exclamation" style="font-size: 3rem; color: var(--color-registrado); margin-bottom: 1rem;"></i>
-                    <h2>Error al Cargar la Vista</h2>
-                    <p style="color: var(--text-secondary); margin-top: 0.5rem;">${err.message}</p>
-                    <button class="btn btn-primary" onclick="loadRoute('${routeName}')" style="margin-top: 1.5rem;">Reintentar</button>
-                </div>
-            `;
+    try {
+        switch (routeName) {
+            case 'login':
+                viewTitle.innerText = 'Iniciar Sesión';
+                await renderLogin(mainContent);
+                break;
+            case 'profiles':
+                viewTitle.innerText = 'Seleccionar Perfil';
+                await renderProfiles(mainContent);
+                break;
+            case 'dashboard':
+                viewTitle.innerText = 'Dashboard de Gestión';
+                await renderDashboard(mainContent);
+                break;
+            case 'pedidos':
+                viewTitle.innerText = 'Gestión de Pedidos';
+                await renderPedidos(mainContent);
+                break;
+            case 'nuevo-pedido':
+                viewTitle.innerText = 'Registrar Pedido';
+                await renderNuevoPedido(mainContent);
+                break;
+            case 'insumos':
+                viewTitle.innerText = 'Productos Pendientes para Compra';
+                await renderInsumos(mainContent);
+                break;
+            case 'clientes':
+                viewTitle.innerText = 'Catálogo de Clientes';
+                await renderClientes(mainContent);
+                break;
+            case 'empleados':
+                viewTitle.innerText = 'Porcentaje de Comisión por Asesor';
+                await renderEmpleados(mainContent);
+                break;
+            case 'planilla':
+                viewTitle.innerText = 'Planilla de Sujetos Excluidos';
+                await renderPlanilla(mainContent);
+                break;
+            case 'configuracion':
+                viewTitle.innerText = 'Configuración del Sistema';
+                await renderConfiguracion(mainContent);
+                break;
+            default:
+                viewTitle.innerText = 'Dashboard';
+                await renderDashboard(mainContent);
         }
+    } catch (err) {
+        console.error(err);
+        mainContent.innerHTML = `
+            <div class="card fade-in" style="border-color: var(--color-registrado); text-align: center; padding: 3rem;">
+                <i class="fa-solid fa-triangle-exclamation" style="font-size: 3rem; color: var(--color-registrado); margin-bottom: 1rem;"></i>
+                <h2>Error al Cargar la Vista</h2>
+                <p style="color: var(--text-secondary); margin-top: 0.5rem;">${err.message}</p>
+                <button class="btn btn-primary" onclick="loadRoute('${routeName}')" style="margin-top: 1.5rem;">Reintentar</button>
+            </div>
+        `;
+    }
 
-        // Fade in
+    // Immediate fade in transition
+    requestAnimationFrame(() => {
+        mainContent.style.transition = 'all 0.12s ease-out';
         mainContent.style.opacity = '1';
         mainContent.style.transform = 'translateY(0)';
-    }, 200);
+    });
 }
 
 // Listen to Hash Changes

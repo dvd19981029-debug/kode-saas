@@ -100,22 +100,21 @@ async function renderEmpleados(container) {
     `;
 
     try {
-        // 1. Fetch data from Firestore
-        const employees = await api.getEmployees();
+        // 1. Fetch data concurrently
+        const [employees, dashboardMetricsRes, allPaymentsRes] = await Promise.all([
+            api.getEmployees(),
+            api.getDashboardMetrics().catch(e => {
+                console.warn("Could not fetch metrics. Using local computation fallbacks.", e);
+                return { advisors: [] };
+            }),
+            api.getCommissionPayments().catch(e => {
+                console.warn("Could not fetch payments.", e);
+                return [];
+            })
+        ]);
         
-        let dashboardMetrics = { advisors: [] };
-        try {
-            dashboardMetrics = await api.getDashboardMetrics();
-        } catch (e) {
-            console.warn("Could not fetch metrics (Firestore quota block). Using local computation fallbacks.", e);
-        }
-
-        let allPayments = [];
-        try {
-            allPayments = await api.getCommissionPayments();
-        } catch (e) {
-            console.warn("Could not fetch payments (Firestore quota block).", e);
-        }
+        const dashboardMetrics = dashboardMetricsRes || { advisors: [] };
+        const allPayments = allPaymentsRes || [];
 
         const listBody = document.getElementById('employees-list');
         const historyBody = document.getElementById('payments-history-list');

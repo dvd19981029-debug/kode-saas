@@ -42,9 +42,11 @@ async function renderInsumos(container) {
         </div>
     `;
 
-    // Load detailed data
-    const details = await api.getOrderDetails();
-    const orders = await api.getOrders();
+    // Load detailed data concurrently
+    const [details, orders] = await Promise.all([
+        api.getOrderDetails(),
+        api.getOrders()
+    ]);
 
     // Map order status for quick check
     const orderMap = {};

@@ -155,16 +155,16 @@ async function loadWeeklyPayrollData() {
     if (!listBody) return;
 
     try {
-        const employees = await api.getEmployees();
-        const orders = await api.getOrders();
+        const [employees, orders, historicalPaymentsRes] = await Promise.all([
+            api.getEmployees(),
+            api.getOrders(),
+            api.getPayrollPayments().catch(e => {
+                console.warn("Could not fetch payroll historical payments.", e);
+                return [];
+            })
+        ]);
         
-        // Fetch all historical payroll payments
-        let historicalPayments = [];
-        try {
-            historicalPayments = await api.getPayrollPayments();
-        } catch (e) {
-            console.warn("Could not fetch payroll historical payments.", e);
-        }
+        const historicalPayments = historicalPaymentsRes || [];
 
         // Render History Table first
         if (historyBody) {
