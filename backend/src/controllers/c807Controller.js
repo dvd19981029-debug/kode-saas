@@ -76,20 +76,10 @@ exports.generateGuia = async (req, res) => {
             ]
         };
 
-        // Retrieve Token 1 from Auth collection
-        const authSnap = await db.collection('auth').get();
-        let c807Token = null;
-        authSnap.forEach(doc => {
-            const data = doc.data();
-            if (data.token_1 && data.estado_auth === 'Activo') {
-                c807Token = data.token_1;
-            }
-        });
-
-        // Check if settings has simulated mode or if token is missing
+        // Check if settings has simulated mode
         const configDoc = await db.collection('config').doc('settings').get();
         const config = configDoc.exists ? configDoc.data() : {};
-        const isSimulated = config.c807_simulado !== false && (!c807Token || config.c807_simulado === true);
+        const isSimulated = config.c807_simulado !== false; // defaults to true if not explicitly false (e.g., during tests or if missing)
 
         if (isSimulated) {
             // Return Simulated C807 response
@@ -119,6 +109,50 @@ exports.generateGuia = async (req, res) => {
                     }
                 ]
             });
+        }
+
+        // Retrieve C807 Token dynamically using Basic Auth (matching the Google Apps Script bridge credentials)
+        let basicAuth = "Basic YWRtaW5AbHVpc2VnbToyMDI2"; // Default fallback basic auth token
+        if (config.c807_username && config.c807_password) {
+            const credentials = `${config.c807_username}:${config.c807_password}`;
+            basicAuth = `Basic ${Buffer.from(credentials).toString('base64')}`;
+        }
+
+        let c807Token = null;
+        try {
+            c807Token = await new Promise((resolve, reject) => {
+                const options = {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': basicAuth,
+                        'Content-Length': 0
+                    }
+                };
+                const tokenReq = https.request('https://app.c807.com/admin.php/sesion/get_token', options, (tokenRes) => {
+                    let body = '';
+                    tokenRes.on('data', chunk => body += chunk);
+                    tokenRes.on('end', () => {
+                        if (tokenRes.statusCode !== 200) {
+                            return reject(new Error(`Status Code ${tokenRes.statusCode} - ${body}`));
+                        }
+                        try {
+                            const json = JSON.parse(body);
+                            const token = json.access_token || (json.data && json.data.access_token) || json.token;
+                            if (!token) {
+                                return reject(new Error(`No token found in body: ${body}`));
+                            }
+                            resolve(token);
+                        } catch (e) {
+                            reject(new Error(`JSON Parse error: ${e.message}`));
+                        }
+                    });
+                });
+                tokenReq.on('error', (err) => reject(new Error(`Connection failure: ${err.message}`)));
+                tokenReq.end();
+            });
+        } catch (authErr) {
+            console.error("C807 Token Retrieval Error:", authErr);
+            return res.status(401).json({ error: "Error de autenticación con C807 (Obtención de Token)", details: authErr.message });
         }
 
         // Send to real C807 Express API
