@@ -78,12 +78,10 @@ async function renderNuevoPedido(container) {
                 <h3 style="margin-bottom: 1rem;"><i class="fa-solid fa-bottle-droplet"></i> Agregar Perfumes</h3>
                 
                 <div style="display: flex; gap: 0.5rem; margin-bottom: 1.5rem; align-items: flex-end;">
-                    <div class="form-group" style="flex: 3; margin-bottom: 0;">
-                        <label for="p-product">Perfume (Fragancia)</label>
-                        <select id="p-product" class="form-control">
-                            <option value="">Selecciona fragancia...</option>
-                            ${catalogOptions}
-                        </select>
+                    <div class="form-group search-results-container" style="flex: 3; margin-bottom: 0;">
+                        <label for="p-product-search">Perfume (Fragancia)</label>
+                        <input type="text" id="p-product-search" class="form-control" placeholder="Buscar por Nombre, Marca o Código..." autocomplete="off">
+                        <div id="p-product-results" class="search-results-dropdown" style="display: none;"></div>
                     </div>
                     <div class="form-group" style="flex: 1.5; margin-bottom: 0;">
                         <label for="p-version">Versión</label>
@@ -230,18 +228,74 @@ async function renderNuevoPedido(container) {
         clientSelect.dispatchEvent(new Event('change'));
         window.preselectedClientId = null; // Clear preselected state
     }
+
+    // Reset selected product variable
+    window.selectedProductIdForOrder = null;
+
+    // Product Autocomplete Search Logic
+    const searchInput = document.getElementById('p-product-search');
+    const resultsDropdown = document.getElementById('p-product-results');
+
+    const renderSearchResults = (query) => {
+        const lowerQuery = query.toLowerCase().trim();
+        const filtered = catalog.filter(p => 
+            p.contratipo.toLowerCase().includes(lowerQuery) || 
+            (p.marca && p.marca.toLowerCase().includes(lowerQuery)) || 
+            p.kodigo.toLowerCase().includes(lowerQuery)
+        );
+
+        resultsDropdown.innerHTML = '';
+        if (filtered.length === 0) {
+            resultsDropdown.innerHTML = `<div class="search-results-item" style="text-align:center; color:var(--text-muted); padding: 0.8rem;">No se encontraron fragancias</div>`;
+            return;
+        }
+
+        filtered.forEach(p => {
+            const div = document.createElement('div');
+            div.className = 'search-results-item';
+            div.innerHTML = `
+                <span class="badge-kodigo">${p.kodigo}</span>
+                <strong>${p.contratipo}</strong> 
+                <span style="color: var(--text-secondary); font-size: 0.75rem; margin-left: 0.25rem;">(${p.marca || 'Genérica'})</span>
+                <span style="float: right; font-weight: 600; color: var(--primary); font-size: 0.8rem;">$${p.precio.toFixed(2)}</span>
+            `;
+            div.onclick = () => {
+                searchInput.value = `${p.contratipo} (${p.marca || 'Genérica'}) - [${p.kodigo}]`;
+                window.selectedProductIdForOrder = p.id;
+                resultsDropdown.style.display = 'none';
+            };
+            resultsDropdown.appendChild(div);
+        });
+    };
+
+    if (searchInput && resultsDropdown) {
+        searchInput.onfocus = () => {
+            resultsDropdown.style.display = 'block';
+            renderSearchResults(searchInput.value);
+        };
+
+        searchInput.oninput = (e) => {
+            renderSearchResults(e.target.value);
+        };
+
+        // Close dropdown on click outside
+        document.addEventListener('click', (e) => {
+            if (!searchInput.contains(e.target) && !resultsDropdown.contains(e.target)) {
+                resultsDropdown.style.display = 'none';
+            }
+        });
+    }
 }
 
 // Add perfume item to the detailed list
 window.addPerfumeToOrder = function() {
-    const productSelect = document.getElementById('p-product');
     const versionSelect = document.getElementById('p-version');
 
-    const productId = productSelect.value;
+    const productId = window.selectedProductIdForOrder;
     const version = versionSelect.value;
 
     if (!productId) {
-        showToast("Por favor selecciona una fragancia", "warning");
+        showToast("Por favor busca y selecciona una fragancia", "warning");
         return;
     }
 
@@ -264,6 +318,11 @@ window.addPerfumeToOrder = function() {
 
         window.currentOrderDetails.push(detailItem);
         updateOrderDetailsTable();
+
+        // Clear search input and selection
+        const searchInput = document.getElementById('p-product-search');
+        if (searchInput) searchInput.value = '';
+        window.selectedProductIdForOrder = null;
     });
 };
 
