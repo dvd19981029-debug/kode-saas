@@ -257,7 +257,6 @@ async function renderNuevoPedido(container) {
                 <span class="badge-kodigo">${p.id}</span>
                 <strong>${p.contratipo}</strong> 
                 <span style="color: var(--text-secondary); font-size: 0.75rem; margin-left: 0.25rem;">(${p.marca || 'Genérica'})</span>
-                <span style="float: right; font-weight: 600; color: var(--primary); font-size: 0.8rem;">$${p.precio.toFixed(2)}</span>
             `;
             div.onclick = () => {
                 searchInput.value = `${p.contratipo} (${p.marca || 'Genérica'}) - [${p.id}]`;
