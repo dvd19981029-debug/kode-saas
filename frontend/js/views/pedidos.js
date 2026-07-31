@@ -169,12 +169,14 @@ async function renderPedidos(container) {
             // Despacho C807 status column
             let despachoHtml = '';
             if (o.estado_guia === 'Generada') {
+                const liveStatus = o.estado_c807 ? `<span style="font-size:0.72rem; font-weight:600; color:#f59e0b; display:inline-flex; align-items:center; gap:0.2rem; margin-top:0.1rem;"><i class="fa-solid fa-clock-rotate-left" style="font-size:0.65rem;"></i> ${o.estado_c807}</span>` : '';
                 despachoHtml = `
                     <div style="display:flex; flex-direction:column; gap:0.25rem; font-size:0.8rem;">
-                        <a href="${o.link_rastreo}" target="_blank" style="font-weight:700; color:var(--color-enviado);">
+                        <a href="${o.link_rastreo}" target="_blank" style="font-weight:700; color:var(--color-enviado); text-decoration:none;">
                             <i class="fa-solid fa-truck-fast"></i> ${o.num_rastreo}
                         </a>
                         <span style="font-size:0.7rem; color:var(--text-muted);">C807 Express</span>
+                        ${liveStatus}
                     </div>
                 `;
             } else if (o.estado === 'Cancelado') {
