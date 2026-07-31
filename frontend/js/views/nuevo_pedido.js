@@ -1,6 +1,7 @@
 // View: Nuevo Pedido
 async function renderNuevoPedido(container) {
     const clients = await api.getClients();
+    window.currentClients = clients;
     const catalog = await api.getCatalog();
     const departments = await api.getDepartments();
     const municipalities = await api.getMunicipalities();
@@ -153,7 +154,7 @@ async function renderNuevoPedido(container) {
         const clientId = e.target.value;
         if (!clientId) return;
 
-        const client = clients.find(c => c.id === clientId);
+        const client = (window.currentClients || []).find(c => c.id === clientId);
         if (client) {
             phoneInput.value = client.telefono || '';
             addressInput.value = client.direccion || '';
@@ -407,6 +408,7 @@ window.submitRegisterClientFromOrderForm = async function() {
 
         // Reload clients list in the dropdown
         const updatedClients = await api.getClients();
+        window.currentClients = updatedClients;
         const clientSelect = document.getElementById('o-client');
         
         if (clientSelect) {

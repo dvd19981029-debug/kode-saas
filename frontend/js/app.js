@@ -281,6 +281,12 @@ window.smartRefreshView = function(changedCollection) {
         const viewNeedsRefresh = affectedViews.includes(currentRoute);
 
         if (viewNeedsRefresh) {
+            // Never auto-refresh the order creation view to prevent wiping out custom forms/perfumes mid-creation
+            if (currentRoute === 'nuevo-pedido') {
+                console.log("smartRefreshView: Se omitió el refresco automático de pantalla en 'nuevo-pedido' para no interrumpir el registro del pedido.");
+                return;
+            }
+
             const activeElement = document.activeElement;
             const isEditing = activeElement && (
                 activeElement.tagName === 'INPUT' || 
