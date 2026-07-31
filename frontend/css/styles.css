@@ -81,15 +81,20 @@ button, input, select, textarea {
 
 /* Thicker, more interactive scrollbars for tables */
 .table-responsive::-webkit-scrollbar {
-  height: 10px;
+  height: 12px;
+  display: block !important;
 }
-.table-responsive::-webkit-scrollbar-thumb {
-  background: rgba(99, 102, 241, 0.3);
-  border: 1px solid var(--border-color);
+.table-responsive::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05) !important;
   border-radius: 6px;
 }
+.table-responsive::-webkit-scrollbar-thumb {
+  background: #6366f1 !important;
+  border-radius: 6px;
+  border: 2px solid var(--card-bg);
+}
 .table-responsive::-webkit-scrollbar-thumb:hover {
-  background: var(--primary);
+  background: #818cf8 !important;
 }
 
 
@@ -320,7 +325,7 @@ button, input, select, textarea {
 /* Tables */
 .table-responsive {
   width: 100%;
-  overflow-x: auto;
+  overflow-x: scroll !important;
   border-radius: 0.5rem;
   border: 1px solid var(--border-color);
 }
