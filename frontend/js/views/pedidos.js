@@ -35,11 +35,13 @@ async function renderPedidos(container) {
                 <table class="table">
                     <thead>
                         <tr>
+                            <th>Estado Envío</th>
+                            <th>Estado C807</th>
                             <th>ID Pedido</th>
                             <th>Fecha</th>
                             <th>Cliente</th>
+                            <th>Teléfono</th>
                             <th>Monto Total</th>
-                            <th>Estado Pedido</th>
                             <th>Factura (FacturaLlama)</th>
                             <th>Despacho (C807)</th>
                             <th>Acciones</th>
@@ -47,7 +49,7 @@ async function renderPedidos(container) {
                     </thead>
                     <tbody id="orders-list">
                         <tr>
-                            <td colspan="8" style="text-align: center; color: var(--text-secondary); padding: 3rem;">
+                            <td colspan="10" style="text-align: center; color: var(--text-secondary); padding: 3rem;">
                                 <i class="fa-solid fa-spinner fa-spin" style="font-size: 2rem; margin-bottom: 0.5rem; display: block;"></i>
                                 Cargando pedidos...
                             </td>
@@ -76,8 +78,10 @@ async function renderPedidos(container) {
     ]);
 
     const clientMap = {};
+    const clientPhoneMap = {};
     clients.forEach(c => {
         clientMap[c.id] = c.nombre;
+        clientPhoneMap[c.id] = c.telefono || 'N/A';
     });
 
     const searchInput = document.getElementById('search-orders');
@@ -203,12 +207,35 @@ async function renderPedidos(container) {
                 </div>
             `;
 
+            // Build Estado Envío badge/label
+            let statusIcon = 'fa-circle-pause';
+            let statusColor = '#f59e0b';
+            if (o.estado === 'Enviado') {
+                statusIcon = 'fa-truck';
+                statusColor = 'var(--color-enviado)';
+            } else if (o.estado === 'Entregado') {
+                statusIcon = 'fa-circle-check';
+                statusColor = 'var(--color-entregado)';
+            } else if (o.estado === 'Cancelado') {
+                statusIcon = 'fa-circle-xmark';
+                statusColor = 'var(--color-registrado)';
+            } else if (o.estado === 'Insumos comprados' || o.estado === 'Insumos Comprados') {
+                statusIcon = 'fa-boxes-packing';
+                statusColor = 'var(--color-insumos)';
+            }
+            const estadoEnvioHtml = `<span style="color: ${statusColor}; font-weight: 600; display: inline-flex; align-items: center; gap: 0.25rem;"><i class="fa-solid ${statusIcon}"></i> ${o.estado || 'Registrado'}</span>`;
+
+            // Build Estado C807 column
+            const c807StatusHtml = o.estado_c807 ? `<span style="font-weight: 600; color: #f59e0b; display: inline-flex; align-items: center; gap: 0.2rem;"><i class="fa-solid fa-clock-rotate-left" style="font-size:0.75rem;"></i> ${o.estado_c807}</span>` : '<span style="color:var(--text-muted);">-</span>';
+
             tr.innerHTML = `
+                <td>${estadoEnvioHtml}</td>
+                <td>${c807StatusHtml}</td>
                 <td><span class="${idClass}">${o.id}</span> ${o.isOfflineTemp ? '<span class="badge badge-insumos">Offline</span>' : ''}</td>
                 <td>${orderDate}</td>
                 <td><strong>${clientMap[o.cliente_id] || o.cliente_id || 'N/A'}</strong></td>
+                <td>${clientPhoneMap[o.cliente_id] || 'N/A'}</td>
                 <td><strong>$${(o.monto_total || 0).toFixed(2)}</strong></td>
-                <td><span class="badge badge-${cleanStatus.toLowerCase()}">${o.estado || 'Registrado'}</span></td>
                 <td>${factHtml}</td>
                 <td>${despachoHtml}</td>
                 <td>${actionsHtml}</td>
