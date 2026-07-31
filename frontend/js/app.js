@@ -298,6 +298,18 @@ window.smartRefreshView = function(changedCollection) {
     }, 500);
 };
 
+// Translate vertical mouse wheel scroll to horizontal scroll on table-responsive containers
+document.addEventListener('wheel', (e) => {
+    const container = e.target.closest('.table-responsive');
+    if (container) {
+        const canScrollHorizontally = container.scrollWidth > container.clientWidth;
+        if (canScrollHorizontally) {
+            container.scrollLeft += e.deltaY;
+            e.preventDefault();
+        }
+    }
+}, { passive: false });
+
 // App Initialization
 window.addEventListener('DOMContentLoaded', async () => {
     // Set theme representation

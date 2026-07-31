@@ -79,6 +79,20 @@ button, input, select, textarea {
   background: var(--text-muted);
 }
 
+/* Thicker, more interactive scrollbars for tables */
+.table-responsive::-webkit-scrollbar {
+  height: 10px;
+}
+.table-responsive::-webkit-scrollbar-thumb {
+  background: rgba(99, 102, 241, 0.3);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+}
+.table-responsive::-webkit-scrollbar-thumb:hover {
+  background: var(--primary);
+}
+
+
 /* App Layout */
 #app-layout {
   display: flex;
