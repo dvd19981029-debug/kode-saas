@@ -32,7 +32,7 @@ async function renderPedidos(container) {
 
             <!-- Table -->
             <div class="table-responsive">
-                <table class="table" style="min-width: 1150px; font-size: 0.8rem;">
+                <table class="table" style="min-width: 1150px; font-size: 0.75rem;">
                     <thead>
                         <tr>
                             <th>Estado Envío</th>
