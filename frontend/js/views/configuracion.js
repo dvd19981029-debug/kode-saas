@@ -18,7 +18,12 @@ async function renderConfiguracion(container) {
                 </h4>
                 <div class="form-group">
                     <label for="cfg-llama-key">FacturaLlama API Key</label>
-                    <input type="password" id="cfg-llama-key" class="form-control" placeholder="E.g. simulado_kode_saas_llama_key">
+                    <div style="position: relative; display: flex; align-items: center;">
+                        <input type="password" id="cfg-llama-key" class="form-control" placeholder="E.g. simulado_kode_saas_llama_key" style="padding-right: 2.75rem;">
+                        <button type="button" onclick="toggleApiKeyVisibility()" style="position: absolute; right: 0.75rem; background: none; border: none; color: var(--text-muted); cursor: pointer; padding: 0.25rem; font-size: 1.1rem; display: flex; align-items: center; justify-content: center; outline: none;">
+                            <i class="fa-solid fa-eye" id="llama-key-eye-icon"></i>
+                        </button>
+                    </div>
                     <p style="font-size:0.75rem; color:var(--text-muted); margin-top:0.25rem;">
                         Deja "simulado_..." para usar respuestas simuladas locales sin cargos a servidores oficiales.
                     </p>
@@ -70,3 +75,17 @@ async function renderConfiguracion(container) {
         showToast("Error al cargar configuraciones: " + err.message, "danger");
     }
 }
+
+window.toggleApiKeyVisibility = function() {
+    const input = document.getElementById('cfg-llama-key');
+    const icon = document.getElementById('llama-key-eye-icon');
+    if (input && icon) {
+        if (input.type === 'password') {
+            input.type = 'text';
+            icon.className = 'fa-solid fa-eye-slash';
+        } else {
+            input.type = 'password';
+            icon.className = 'fa-solid fa-eye';
+        }
+    }
+};
