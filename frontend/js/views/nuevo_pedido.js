@@ -241,7 +241,7 @@ async function renderNuevoPedido(container) {
         const filtered = catalog.filter(p => 
             p.contratipo.toLowerCase().includes(lowerQuery) || 
             (p.marca && p.marca.toLowerCase().includes(lowerQuery)) || 
-            p.kodigo.toLowerCase().includes(lowerQuery)
+            p.id.toLowerCase().includes(lowerQuery)
         );
 
         resultsDropdown.innerHTML = '';
@@ -254,13 +254,13 @@ async function renderNuevoPedido(container) {
             const div = document.createElement('div');
             div.className = 'search-results-item';
             div.innerHTML = `
-                <span class="badge-kodigo">${p.kodigo}</span>
+                <span class="badge-kodigo">${p.id}</span>
                 <strong>${p.contratipo}</strong> 
                 <span style="color: var(--text-secondary); font-size: 0.75rem; margin-left: 0.25rem;">(${p.marca || 'Genérica'})</span>
                 <span style="float: right; font-weight: 600; color: var(--primary); font-size: 0.8rem;">$${p.precio.toFixed(2)}</span>
             `;
             div.onclick = () => {
-                searchInput.value = `${p.contratipo} (${p.marca || 'Genérica'}) - [${p.kodigo}]`;
+                searchInput.value = `${p.contratipo} (${p.marca || 'Genérica'}) - [${p.id}]`;
                 window.selectedProductIdForOrder = p.id;
                 resultsDropdown.style.display = 'none';
             };
