@@ -32,7 +32,7 @@ async function renderPedidos(container) {
 
             <!-- Table -->
             <div class="table-responsive">
-                <table class="table" style="min-width: 1250px;">
+                <table class="table" style="min-width: 1150px; font-size: 0.8rem;">
                     <thead>
                         <tr>
                             <th>Estado Envío</th>
@@ -223,19 +223,19 @@ async function renderPedidos(container) {
                 statusIcon = 'fa-boxes-packing';
                 statusColor = 'var(--color-insumos)';
             }
-            const estadoEnvioHtml = `<span style="color: ${statusColor}; font-weight: 600; display: inline-flex; align-items: center; gap: 0.25rem;"><i class="fa-solid ${statusIcon}"></i> ${o.estado || 'Registrado'}</span>`;
+            const estadoEnvioHtml = `<span style="color: ${statusColor}; font-weight: normal; display: inline-flex; align-items: center; gap: 0.25rem;"><i class="fa-solid ${statusIcon}"></i> ${o.estado || 'Registrado'}</span>`;
 
             // Build Estado C807 column
-            const c807StatusHtml = o.estado_c807 ? `<span style="font-weight: 600; color: #f59e0b; display: inline-flex; align-items: center; gap: 0.2rem;"><i class="fa-solid fa-clock-rotate-left" style="font-size:0.75rem;"></i> ${o.estado_c807}</span>` : '<span style="color:var(--text-muted);">-</span>';
+            const c807StatusHtml = o.estado_c807 ? `<span style="font-weight: normal; color: #f59e0b; display: inline-flex; align-items: center; gap: 0.2rem;"><i class="fa-solid fa-clock-rotate-left" style="font-size:0.75rem;"></i> ${o.estado_c807}</span>` : '<span style="color:var(--text-muted);">-</span>';
 
             tr.innerHTML = `
                 <td>${estadoEnvioHtml}</td>
                 <td>${c807StatusHtml}</td>
                 <td><span class="${idClass}">${o.id}</span> ${o.isOfflineTemp ? '<span class="badge badge-insumos">Offline</span>' : ''}</td>
                 <td>${orderDate}</td>
-                <td><strong>${clientMap[o.cliente_id] || o.cliente_id || 'N/A'}</strong></td>
+                <td>${clientMap[o.cliente_id] || o.cliente_id || 'N/A'}</td>
                 <td>${clientPhoneMap[o.cliente_id] || 'N/A'}</td>
-                <td><strong>$${(o.monto_total || 0).toFixed(2)}</strong></td>
+                <td>$${(o.monto_total || 0).toFixed(2)}</td>
                 <td>${factHtml}</td>
                 <td>${despachoHtml}</td>
                 <td>${actionsHtml}</td>
