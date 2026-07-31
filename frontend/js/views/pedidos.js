@@ -231,7 +231,7 @@ async function renderPedidos(container) {
             tr.innerHTML = `
                 <td>${estadoEnvioHtml}</td>
                 <td>${c807StatusHtml}</td>
-                <td><span class="${idClass}">${o.id}</span> ${o.isOfflineTemp ? '<span class="badge badge-insumos">Offline</span>' : ''}</td>
+                <td><span class="${idClass}" style="cursor: pointer; text-decoration: underline;" onclick="openOrderDetailsModal('${o.id}')">${o.id}</span> ${o.isOfflineTemp ? '<span class="badge badge-insumos">Offline</span>' : ''}</td>
                 <td>${orderDate}</td>
                 <td>${clientMap[o.cliente_id] || o.cliente_id || 'N/A'}</td>
                 <td>${clientPhoneMap[o.cliente_id] || 'N/A'}</td>
@@ -448,5 +448,96 @@ window.changeOrderStatus = async function(orderId, newStatus) {
         await renderPedidos(document.getElementById('main-content'));
     } catch(err) {
         showToast(`Error al cambiar estado: ${err.message}`, "danger");
+    }
+};
+
+window.openOrderDetailsModal = async function(orderId) {
+    showToast("Cargando detalles del pedido...", "info");
+    try {
+        const [details, orders, clients] = await Promise.all([
+            api.getOrderDetails(),
+            api.getOrders(),
+            api.getClients()
+        ]);
+        
+        const order = orders.find(o => o.id === orderId);
+        if (!order) {
+            showToast("No se encontró el pedido.", "danger");
+            return;
+        }
+
+        const client = clients.find(c => c.id === order.cliente_id);
+        const orderDetails = details.filter(d => d.pedido_id === orderId);
+
+        let rowsHtml = '';
+        if (orderDetails.length === 0) {
+            rowsHtml = `
+                <tr>
+                    <td colspan="5" style="text-align: center; color: var(--text-muted); padding: 1.5rem;">
+                        Este pedido no contiene productos.
+                    </td>
+                </tr>
+            `;
+        } else {
+            orderDetails.forEach(d => {
+                rowsHtml += `
+                    <tr>
+                        <td><strong>${d.kodigo}</strong></td>
+                        <td>${d.contratipo || 'Desconocido'}</td>
+                        <td><span class="badge ${d.version === 'Plus' ? 'badge-insumos' : 'badge-enviado'}">${d.version || 'Normal'}</span></td>
+                        <td>$${(parseFloat(d.precio) || 20.0).toFixed(2)}</td>
+                        <td><span class="badge" style="background-color: ${d.estado === 'Insumos Comprados' || d.estado === 'Sacado del Stock' ? 'rgba(16, 185, 129, 0.15); color: var(--color-entregado);' : 'rgba(245, 158, 11, 0.15); color: #f59e0b;'}">${d.estado || 'Registrado'}</span></td>
+                    </tr>
+                `;
+            });
+        }
+
+        const bodyHTML = `
+            <div style="font-size: 0.85rem;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem; background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); padding: 1rem; border-radius: 0.5rem;">
+                    <div>
+                        <span style="color: var(--text-muted); display: block; font-size: 0.75rem; text-transform: uppercase;">Cliente</span>
+                        <strong style="color: #fff; font-size: 1rem;">${client ? client.nombre : 'Desconocido'}</strong>
+                        <span style="color: var(--text-secondary); display: block; margin-top: 0.25rem;">Teléfono: ${client ? client.telefono : 'N/A'}</span>
+                    </div>
+                    <div style="text-align: right;">
+                        <span style="color: var(--text-muted); display: block; font-size: 0.75rem; text-transform: uppercase;">Estado General</span>
+                        <span class="badge badge-${(order.estado || 'Registrado').replace(/\s+/g, '-').toLowerCase()}" style="margin-top: 0.25rem;">${order.estado || 'Registrado'}</span>
+                        <span style="color: var(--text-secondary); display: block; margin-top: 0.25rem;">Fecha: ${order.fecha_pedido ? new Date(order.fecha_pedido).toLocaleDateString() : 'N/A'}</span>
+                    </div>
+                </div>
+
+                <h4 style="margin-bottom: 0.75rem; color: var(--text-secondary);"><i class="fa-solid fa-bottle-droplet"></i> Fragancias en el Pedido</h4>
+                <div class="table-responsive" style="margin-bottom: 1.5rem;">
+                    <table class="table" style="font-size: 0.8rem; min-width: 100%;">
+                        <thead>
+                            <tr>
+                                <th>Código</th>
+                                <th>Fragancia</th>
+                                <th>Versión</th>
+                                <th>Precio</th>
+                                <th>Estado Insumo</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${rowsHtml}
+                        </tbody>
+                    </table>
+                </div>
+
+                <div style="text-align: right; border-top: 1px solid var(--border-color); padding-top: 1rem;">
+                    <span style="color: var(--text-muted); font-size: 0.8rem; margin-right: 0.5rem;">Monto Total:</span>
+                    <strong style="color: var(--primary); font-size: 1.25rem;">$${(order.monto_total || 0).toFixed(2)}</strong>
+                </div>
+            </div>
+        `;
+
+        const footerHTML = `
+            <button class="btn btn-secondary" onclick="closeModal()">Cerrar</button>
+        `;
+
+        openModal(`Detalle del Pedido: ${orderId}`, bodyHTML, footerHTML);
+    } catch (err) {
+        showToast("Error al cargar detalles: " + err.message, "danger");
     }
 };
