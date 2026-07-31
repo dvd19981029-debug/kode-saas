@@ -295,15 +295,16 @@ async function renderInsumos(container) {
 
             // Status Actions
             const statusSelectHtml = `
-                <div style="display: flex; gap: 0.5rem; align-items: center;">
-                    <button class="btn btn-success btn-sm" onclick="changeOrderStatusFromInsumos('${selectedOrder.id}', 'Enviado')" style="padding: 0.5rem 0.75rem; font-size: 0.8rem; display: inline-flex; align-items: center; gap: 0.25rem;">
+                <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
+                    <button class="btn btn-success btn-sm" onclick="changeOrderStatusFromInsumos('${selectedOrder.id}', 'Enviado')" style="padding: 0.5rem 0.75rem; font-size: 0.8rem; display: inline-flex; align-items: center; gap: 0.25rem;" title="Marcar como Enviado">
                         <i class="fa-solid fa-truck-ramp-box"></i> Despachado (Enviado)
                     </button>
-                    <select onchange="changeOrderStatusFromInsumos('${selectedOrder.id}', this.value)" class="form-control" style="padding:0.4rem; font-size:0.8rem; width:auto; height:34px; margin: 0;">
-                        <option value="">Otro estado...</option>
-                        <option value="Entregado">Entregado</option>
-                        <option value="Cancelado">Cancelado</option>
-                    </select>
+                    <button class="btn btn-secondary btn-sm" onclick="changeOrderStatusFromInsumos('${selectedOrder.id}', 'Entregado')" style="padding: 0.5rem 0.75rem; font-size: 0.8rem; display: inline-flex; align-items: center; gap: 0.25rem;" title="Marcar como Entregado">
+                        <i class="fa-solid fa-circle-check" style="color:var(--color-entregado);"></i> Entregado
+                    </button>
+                    <button class="btn btn-secondary btn-sm" onclick="confirmCancelOrderFromInsumos('${selectedOrder.id}')" style="padding: 0.5rem 0.75rem; font-size: 0.8rem; display: inline-flex; align-items: center; gap: 0.25rem;" title="Cancelar Pedido">
+                        <i class="fa-solid fa-circle-xmark" style="color:var(--color-registrado);"></i> Cancelar
+                    </button>
                 </div>
             `;
 
@@ -390,5 +391,11 @@ window.changeOrderStatusFromInsumos = async function(orderId, newStatus) {
         await renderInsumos(document.getElementById('main-content'));
     } catch(err) {
         showToast(`Error al cambiar estado: ${err.message}`, "danger");
+    }
+};
+
+window.confirmCancelOrderFromInsumos = async function(orderId) {
+    if (confirm(`¿Estás seguro de que deseas cancelar el pedido ${orderId}?`)) {
+        await changeOrderStatusFromInsumos(orderId, 'Cancelado');
     }
 };

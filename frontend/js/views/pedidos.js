@@ -195,15 +195,18 @@ async function renderPedidos(container) {
 
             // Actions dropdown/buttons
             const actionsHtml = `
-                <div style="display:flex; gap:0.25rem;">
+                <div style="display:flex; gap:0.35rem; align-items:center;">
                     <button class="btn btn-secondary btn-sm" onclick="openPaymentModal('${o.id}', ${o.monto_total || 0})" style="padding: 0.25rem 0.5rem;" title="Registrar Pago">
                         <i class="fa-solid fa-hand-holding-dollar" style="color:var(--color-entregado);"></i>
                     </button>
-                    <select onchange="changeOrderStatus('${o.id}', this.value)" class="form-control" style="padding: 0.25rem; font-size: 0.75rem; width: 100px; height: 28px;">
-                        <option value="">Estado...</option>
-                        <option value="Entregado">Entregado</option>
-                        <option value="Cancelado">Cancelado</option>
-                    </select>
+                    ${o.estado !== 'Entregado' && o.estado !== 'Cancelado' ? `
+                        <button class="btn btn-secondary btn-sm" onclick="changeOrderStatus('${o.id}', 'Entregado')" style="padding: 0.25rem 0.5rem;" title="Marcar como Entregado">
+                            <i class="fa-solid fa-circle-check" style="color:var(--color-entregado);"></i>
+                        </button>
+                        <button class="btn btn-secondary btn-sm" onclick="confirmCancelOrder('${o.id}')" style="padding: 0.25rem 0.5rem;" title="Cancelar Pedido">
+                            <i class="fa-solid fa-circle-xmark" style="color:var(--color-registrado);"></i>
+                        </button>
+                    ` : ''}
                 </div>
             `;
 
@@ -553,5 +556,11 @@ window.openOrderDetailsModal = async function(orderId) {
         openModal(`Detalle del Pedido: ${orderId}`, bodyHTML, footerHTML);
     } catch (err) {
         showToast("Error al cargar detalles: " + err.message, "danger");
+    }
+};
+
+window.confirmCancelOrder = async function(orderId) {
+    if (confirm(`¿Estás seguro de que deseas cancelar el pedido ${orderId}?`)) {
+        await changeOrderStatus(orderId, 'Cancelado');
     }
 };
