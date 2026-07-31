@@ -337,9 +337,11 @@ button, input, select, textarea {
 }
 
 .table th, .table td {
-  padding: 1rem;
+  padding: 0.5rem 0.75rem;
   border-bottom: 1px solid var(--border-color);
   font-size: 0.9rem;
+  vertical-align: middle;
+  line-height: 1.25;
 }
 
 .table th {
@@ -395,23 +397,28 @@ button, input, select, textarea {
 /* ID coloring rules as requested by user */
 .order-id-Registrado {
   color: var(--color-registrado) !important;
-  font-weight: 700;
+  font-weight: normal;
+  font-size: 0.75rem;
 }
 .order-id-Insumos-Comprados, .order-id-Insumos-comprados {
   color: var(--color-insumos) !important;
-  font-weight: 700;
+  font-weight: normal;
+  font-size: 0.75rem;
 }
 .order-id-Enviado {
   color: var(--color-enviado) !important;
-  font-weight: 700;
+  font-weight: normal;
+  font-size: 0.75rem;
 }
 .order-id-Entregado {
   color: var(--color-entregado) !important;
-  font-weight: 700;
+  font-weight: normal;
+  font-size: 0.75rem;
 }
 .order-id-Cancelado {
   color: var(--color-cancelado) !important;
-  font-weight: 700;
+  font-weight: normal;
+  font-size: 0.75rem;
 }
 
 /* Dashboard Grid */
