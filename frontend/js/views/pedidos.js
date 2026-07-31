@@ -327,7 +327,11 @@ window.submitGenerateFactura = async function(orderId) {
     try {
         const res = await api.generateFactura(orderId, dteConfig);
         showToast("¡DTE generado exitosamente!", "success");
-        await renderPedidos(document.getElementById('main-content'));
+        if (window.currentRoute === 'insumos') {
+            await renderInsumos(document.getElementById('main-content'));
+        } else {
+            await renderPedidos(document.getElementById('main-content'));
+        }
     } catch(err) {
         showToast(`Error al emitir DTE: ${err.message}`, "danger");
     }
@@ -339,7 +343,11 @@ window.generateC807Guia = async function(orderId) {
     try {
         const res = await api.generateGuia(orderId);
         showToast(`¡Guía C807 generada! N/R: ${res.guias[0].guia}`, "success");
-        await renderPedidos(document.getElementById('main-content'));
+        if (window.currentRoute === 'insumos') {
+            await renderInsumos(document.getElementById('main-content'));
+        } else {
+            await renderPedidos(document.getElementById('main-content'));
+        }
     } catch(err) {
         showToast(`Error al generar guía: ${err.message}`, "danger");
     }
