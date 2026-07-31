@@ -90,14 +90,15 @@ const api = {
         return data;
     },
 
-    async createOrder(order, details) {
+    async createOrder(order, details, payments = []) {
         if (!this.isOnline()) {
             // Queue for offline sync
             const offlineQueue = await localforage.getItem('offline_orders_queue') || [];
             const tempId = `PED-TEMP-${Date.now()}`;
             const tempOrder = {
                 order: { ...order, id: tempId, isOfflineTemp: true, estado: 'Registrado', fecha_pedido: new Date().toISOString() },
-                details: details.map((d, i) => ({ ...d, id: `DETPED-TEMP-${Date.now()}-${i}`, pedido_id: tempId, estado: 'Registrado' }))
+                details: details.map((d, i) => ({ ...d, id: `DETPED-TEMP-${Date.now()}-${i}`, pedido_id: tempId, estado: 'Registrado' })),
+                payments: payments.map((p, i) => ({ ...p, id: `PAG-TEMP-${Date.now()}-${i}`, pedido_id: tempId, fecha_registro: new Date().toISOString() }))
             };
             offlineQueue.push(tempOrder);
             await localforage.setItem('offline_orders_queue', offlineQueue);
@@ -111,12 +112,17 @@ const api = {
             const cachedDetails = await this.getOrderDetails();
             cachedDetails.push(...tempOrder.details);
             await localforage.setItem('cached_order_details', cachedDetails);
-
+            
+            // Add to cached payments
+            const cachedPayments = await this.getPayments();
+            cachedPayments.push(...tempOrder.payments);
+            await localforage.setItem('cached_payments', cachedPayments);
+ 
             return { success: true, orderId: tempId, order: tempOrder.order, offline: true };
         }
         return await this.request('/orders', {
             method: 'POST',
-            body: JSON.stringify({ order, details })
+            body: JSON.stringify({ order, details, payments })
         });
     },
 
@@ -185,6 +191,29 @@ const api = {
         return await this.request('/payments', {
             method: 'POST',
             body: JSON.stringify(payment)
+        });
+    },
+
+    // Payment Methods
+    async getPaymentMethods() {
+        if (!this.isOnline()) {
+            return await localforage.getItem('cached_payment_methods') || [];
+        }
+        const data = await this.request('/payment-methods');
+        await localforage.setItem('cached_payment_methods', data);
+        return data;
+    },
+
+    async createPaymentMethod(name) {
+        return await this.request('/payment-methods', {
+            method: 'POST',
+            body: JSON.stringify({ nombre: name })
+        });
+    },
+
+    async deletePaymentMethod(id) {
+        return await this.request(`/payment-methods/${id}`, {
+            method: 'DELETE'
         });
     },
 
@@ -313,13 +342,18 @@ const api = {
                 try {
                     const orderData = item.order;
                     const detailsData = item.details;
+                    const paymentsData = item.payments || [];
                     delete orderData.id;
                     delete orderData.isOfflineTemp;
                     detailsData.forEach(d => {
                         delete d.id;
                         delete d.pedido_id;
                     });
-                    await this.createOrder(orderData, detailsData);
+                    paymentsData.forEach(p => {
+                        delete p.id;
+                        delete p.pedido_id;
+                    });
+                    await this.createOrder(orderData, detailsData, paymentsData);
                 } catch (e) {
                     console.error("Error al sincronizar pedido fuera de línea:", e);
                 }
@@ -361,7 +395,8 @@ const cacheKeyMap = {
     'employees': 'cached_employees',
     'config': 'cached_config',
     'payroll_payments': 'cached_payroll_payments',
-    'commission_payments': 'cached_commission_payments'
+    'commission_payments': 'cached_commission_payments',
+    'payment_methods': 'cached_payment_methods'
 };
 
 api.initRealtimeSync = function() {

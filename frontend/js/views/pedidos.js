@@ -457,10 +457,11 @@ window.changeOrderStatus = async function(orderId, newStatus) {
 window.openOrderDetailsModal = async function(orderId) {
     showToast("Cargando detalles del pedido...", "info");
     try {
-        const [details, orders, clients] = await Promise.all([
+        const [details, orders, clients, payments] = await Promise.all([
             api.getOrderDetails(),
             api.getOrders(),
-            api.getClients()
+            api.getClients(),
+            api.getPayments()
         ]);
         
         const order = orders.find(o => o.id === orderId);
@@ -471,6 +472,27 @@ window.openOrderDetailsModal = async function(orderId) {
 
         const client = clients.find(c => c.id === order.cliente_id);
         const orderDetails = details.filter(d => d.pedido_id === orderId);
+        const orderPayments = payments.filter(p => p.pedido_id === orderId);
+
+        let paymentsRowsHtml = '';
+        if (orderPayments.length === 0) {
+            paymentsRowsHtml = `
+                <tr>
+                    <td colspan="2" style="text-align: center; color: var(--text-muted); padding: 1rem;">
+                        No hay pagos registrados para este pedido.
+                    </td>
+                </tr>
+            `;
+        } else {
+            orderPayments.forEach(p => {
+                paymentsRowsHtml += `
+                    <tr>
+                        <td><strong>${p.forma_pago || 'Desconocido'}</strong></td>
+                        <td><strong>$${(parseFloat(p.monto_pago) || 0.0).toFixed(2)}</strong></td>
+                    </tr>
+                `;
+            });
+        }
 
         let rowsHtml = '';
         if (orderDetails.length === 0) {
@@ -542,9 +564,31 @@ window.openOrderDetailsModal = async function(orderId) {
                     </table>
                 </div>
 
-                <div style="text-align: right; border-top: 1px solid var(--border-color); padding-top: 1rem;">
-                    <span style="color: var(--text-muted); font-size: 0.8rem; margin-right: 0.5rem;">Monto Total:</span>
-                    <strong style="color: var(--primary); font-size: 1.25rem;">$${(order.monto_total || 0).toFixed(2)}</strong>
+                <!-- Payments Section -->
+                <h4 style="margin-top: 1.5rem; margin-bottom: 0.5rem; color: var(--text-secondary);"><i class="fa-solid fa-credit-card"></i> Detalle de Pagos</h4>
+                <div class="table-responsive" style="margin-bottom: 1.5rem;">
+                    <table class="table" style="font-size: 0.8rem; min-width: 100%;">
+                        <thead>
+                            <tr>
+                                <th>Forma de Pago</th>
+                                <th>Monto</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${paymentsRowsHtml}
+                        </tbody>
+                    </table>
+                </div>
+
+                <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border-color); padding-top: 1rem;">
+                    <div>
+                        <span style="color: var(--text-muted); font-size: 0.8rem; margin-right: 0.5rem;">Monto a Cobrar (COD):</span>
+                        <strong style="color: var(--color-enviado); font-size: 1.1rem;">$${(order.monto_cobrar !== undefined ? parseFloat(order.monto_cobrar) : (order.monto_total || 0)).toFixed(2)}</strong>
+                    </div>
+                    <div>
+                        <span style="color: var(--text-muted); font-size: 0.8rem; margin-right: 0.5rem;">Monto Total:</span>
+                        <strong style="color: var(--primary); font-size: 1.25rem;">$${(order.monto_total || 0).toFixed(2)}</strong>
+                    </div>
                 </div>
             </div>
         `;

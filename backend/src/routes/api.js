@@ -125,6 +125,50 @@ router.post('/payments', async (req, res) => {
     }
 });
 
+// Payment Methods (Formas de Pago)
+router.get('/payment-methods', async (req, res) => {
+    try {
+        const snapshot = await db.collection('payment_methods').get();
+        let list = [];
+        snapshot.forEach(doc => {
+            list.push({ id: doc.id, ...doc.data() });
+        });
+        if (list.length === 0) {
+            const defaults = ["Contra entrega", "Cuenta BAC", "Cuenta Agrícola", "Link Nequi"];
+            for (const name of defaults) {
+                const docRef = await db.collection('payment_methods').add({ nombre: name });
+                list.push({ id: docRef.id, nombre: name });
+            }
+        }
+        res.json(list);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+router.post('/payment-methods', async (req, res) => {
+    try {
+        const { nombre } = req.body;
+        if (!nombre) {
+            return res.status(400).json({ error: "El nombre es obligatorio" });
+        }
+        const docRef = await db.collection('payment_methods').add({ nombre });
+        res.status(201).json({ id: docRef.id, nombre });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+router.delete('/payment-methods/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        await db.collection('payment_methods').doc(id).delete();
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 // Employees & Commissions
 router.get('/employees', employeeController.getEmployees);
 router.put('/employees/:id', employeeController.updateEmployee);

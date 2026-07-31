@@ -1,13 +1,17 @@
 // View: Nuevo Pedido
 async function renderNuevoPedido(container) {
-    const clients = await api.getClients();
+    const [clients, catalog, departments, municipalities, paymentMethods] = await Promise.all([
+        api.getClients(),
+        api.getCatalog(),
+        api.getDepartments(),
+        api.getMunicipalities(),
+        api.getPaymentMethods()
+    ]);
     window.currentClients = clients;
-    const catalog = await api.getCatalog();
-    const departments = await api.getDepartments();
-    const municipalities = await api.getMunicipalities();
 
     // Reset default details list for new order
     window.currentOrderDetails = [];
+    window.currentOrderPayments = [];
 
     // Client options
     const clientOptions = clients.map(c => `<option value="${c.id}" ${window.preselectedClientId === c.id ? 'selected' : ''}>${c.nombre} (${c.telefono || ''})</option>`).join('');
@@ -112,6 +116,52 @@ async function renderNuevoPedido(container) {
                             </tr>
                         </tbody>
                     </table>
+                </div>
+
+                <!-- Payments Section -->
+                <h4 style="margin-bottom: 0.5rem; margin-top: 1rem;"><i class="fa-solid fa-credit-card"></i> Formas de Pago</h4>
+                <div style="display: flex; gap: 0.5rem; margin-bottom: 1rem; align-items: flex-end;">
+                    <div class="form-group" style="flex: 2; margin-bottom: 0;">
+                        <label for="p-payment-method" style="font-size: 0.8rem;">Forma de Pago</label>
+                        <select id="p-payment-method" class="form-control">
+                            <option value="">Selecciona forma...</option>
+                            ${paymentMethods.map(pm => `<option value="${pm.nombre}">${pm.nombre}</option>`).join('')}
+                        </select>
+                    </div>
+                    <div class="form-group" style="flex: 1.5; margin-bottom: 0;">
+                        <label for="p-payment-amount" style="font-size: 0.8rem;">Monto ($)</label>
+                        <input type="number" id="p-payment-amount" class="form-control" placeholder="0.00" min="0" step="0.01">
+                    </div>
+                    <button type="button" class="btn btn-primary" onclick="addPaymentToOrder()" style="height: 38px;">
+                        <i class="fa-solid fa-plus"></i>
+                    </button>
+                </div>
+
+                <div class="table-responsive" style="max-height: 120px; margin-bottom: 1rem;">
+                    <table class="table" style="min-width: 100%;">
+                        <thead>
+                            <tr>
+                                <th>Forma de Pago</th>
+                                <th>Monto</th>
+                                <th style="width: 50px; text-align: center;">Quitar</th>
+                            </tr>
+                        </thead>
+                        <tbody id="order-payments-list">
+                            <tr>
+                                <td colspan="3" style="text-align: center; color: var(--text-secondary); padding: 0.75rem;">
+                                    Ningún pago registrado.
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="form-group" style="margin-bottom: 1rem;">
+                    <label for="o-cod-amount" style="font-size: 0.85rem; color: var(--text-secondary);">Monto a Cobrar Contra Entrega (COD/C807)</label>
+                    <input type="number" id="o-cod-amount" class="form-control" placeholder="0.00" min="0" step="0.01">
+                    <p style="font-size: 0.72rem; color: var(--text-muted); margin-top: 0.15rem;">
+                        Se calcula automáticamente con el monto de "Contra entrega", pero puedes modificarlo si es necesario.
+                    </p>
                 </div>
 
                 <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border-color); padding-top: 1rem; margin-top: auto;">
@@ -258,6 +308,73 @@ window.removePerfumeFromOrder = function(idx) {
     updateOrderDetailsTable();
 };
 
+window.addPaymentToOrder = function() {
+    const methodSelect = document.getElementById('p-payment-method');
+    const amountInput = document.getElementById('p-payment-amount');
+
+    if (!methodSelect.value || !amountInput.value || parseFloat(amountInput.value) <= 0) {
+        showToast("Selecciona una forma de pago e ingresa un monto válido", "warning");
+        return;
+    }
+
+    const method = methodSelect.value;
+    const amount = parseFloat(amountInput.value);
+
+    window.currentOrderPayments.push({
+        forma_pago: method,
+        monto_pago: amount
+    });
+
+    amountInput.value = '';
+    methodSelect.value = '';
+
+    updateOrderPaymentsTable();
+};
+
+window.removePaymentFromOrder = function(idx) {
+    window.currentOrderPayments.splice(idx, 1);
+    updateOrderPaymentsTable();
+};
+
+window.updateOrderPaymentsTable = function() {
+    const listContainer = document.getElementById('order-payments-list');
+    if (!listContainer) return;
+
+    listContainer.innerHTML = '';
+    if (window.currentOrderPayments.length === 0) {
+        listContainer.innerHTML = `
+            <tr>
+                <td colspan="3" style="text-align: center; color: var(--text-secondary); padding: 0.75rem;">
+                    Ningún pago registrado.
+                </td>
+            </tr>
+        `;
+        document.getElementById('o-cod-amount').value = '';
+        return;
+    }
+
+    let contraEntregaTotal = 0;
+    window.currentOrderPayments.forEach((p, idx) => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td><strong>${p.forma_pago}</strong></td>
+            <td><strong>$${p.monto_pago.toFixed(2)}</strong></td>
+            <td style="text-align: center;">
+                <button type="button" class="btn btn-secondary btn-sm" onclick="removePaymentFromOrder(${idx})" style="padding: 0.15rem 0.35rem;">
+                    <i class="fa-solid fa-trash-can" style="color:var(--color-registrado);"></i>
+                </button>
+            </td>
+        `;
+        listContainer.appendChild(tr);
+
+        if (p.forma_pago.toLowerCase().includes('contra entrega') || p.forma_pago.toLowerCase().includes('efectivo')) {
+            contraEntregaTotal += p.monto_pago;
+        }
+    });
+
+    document.getElementById('o-cod-amount').value = contraEntregaTotal.toFixed(2);
+};
+
 window.saveOrder = async function() {
     const clientSelect = document.getElementById('o-client');
     const phoneInput = document.getElementById('o-phone');
@@ -290,11 +407,12 @@ window.saveOrder = async function() {
         municipio_id: muniSelect.value,
         observaciones: obsInput.value || null,
         usuario: window.currentUser,
-        fecha_pedido: new Date().toISOString()
+        fecha_pedido: new Date().toISOString(),
+        monto_cobrar: parseFloat(document.getElementById('o-cod-amount').value) || 0.0
     };
 
     try {
-        const res = await api.createOrder(orderData, window.currentOrderDetails);
+        const res = await api.createOrder(orderData, window.currentOrderDetails, window.currentOrderPayments);
         showToast("¡Pedido registrado exitosamente!", "success");
         window.location.hash = 'pedidos';
     } catch(err) {

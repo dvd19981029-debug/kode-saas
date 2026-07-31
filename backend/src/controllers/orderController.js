@@ -21,7 +21,7 @@ exports.getOrders = async (req, res) => {
 
 exports.createOrder = async (req, res) => {
     try {
-        const { order, details } = req.body;
+        const { order, details, payments } = req.body;
         
         if (!order || !details || details.length === 0) {
             return res.status(400).json({ error: "Datos del pedido o productos incompletos" });
@@ -75,6 +75,25 @@ exports.createOrder = async (req, res) => {
         order.monto_total = total;
         // Default COD (monto_cobrar) to total, unless paid otherwise
         order.monto_cobrar = order.monto_cobrar !== undefined ? parseFloat(order.monto_cobrar) : total;
+
+        // Save payments if present
+        if (payments && payments.length > 0) {
+            const paymentsRef = db.collection('payments');
+            const paymentsSnap = await paymentsRef.get();
+            let pCount = paymentsSnap.size + 1;
+            
+            payments.forEach((p, pIdx) => {
+                const paymentId = `PAG-${todayStr}-${pCount + pIdx}`;
+                const paymentDoc = {
+                    id: paymentId,
+                    pedido_id: orderId,
+                    forma_pago: p.forma_pago,
+                    monto_pago: parseFloat(p.monto_pago) || 0.0,
+                    fecha_registro: new Date().toISOString()
+                };
+                detailsBatch.set(paymentsRef.doc(paymentId), paymentDoc);
+            });
+        }
 
         await db.collection('orders').doc(orderId).set(order);
         await detailsBatch.commit();

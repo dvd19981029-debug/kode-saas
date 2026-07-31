@@ -336,7 +336,7 @@ button, input, select, textarea {
   width: 100%;
   border-collapse: collapse;
   text-align: left;
-  font-size: 0.9rem;
+  font-size: 0.75rem;
 }
 
 .table th, .table td {
