@@ -156,18 +156,39 @@ exports.markDetailStatus = async (req, res) => {
 
 exports.getDashboardMetrics = async (req, res) => {
     try {
-        // 1. Load configuration goal
-        const configDoc = await db.collection('config').doc('settings').get();
-        const config = configDoc.exists ? configDoc.data() : { monthly_sales_goal: 5000.0 };
+        // 1. Load configuration goal from cache or DB
+        let config = {};
+        if (global.localCache && global.localCache.config && global.localCache.config.monthly_sales_goal) {
+            config = global.localCache.config;
+        } else {
+            const configDoc = await db.collection('config').doc('settings').get();
+            config = configDoc.exists ? configDoc.data() : { monthly_sales_goal: 5000.0 };
+        }
         const monthlyGoal = parseFloat(config.monthly_sales_goal) || 5000.0;
 
-        // 2. Fetch orders and employees
-        const ordersSnap = await db.collection('orders').get();
-        const employeesSnap = await db.collection('employees').get();
+        // 2. Fetch orders and employees from cache or DB
+        let orders = [];
+        if (global.localCache && global.localCache.orders) {
+            orders = global.localCache.orders;
+        } else {
+            const ordersSnap = await db.collection('orders').get();
+            ordersSnap.forEach(doc => {
+                orders.push(doc.data());
+            });
+        }
+
+        let employees = [];
+        if (global.localCache && global.localCache.employees) {
+            employees = global.localCache.employees;
+        } else {
+            const employeesSnap = await db.collection('employees').get();
+            employeesSnap.forEach(doc => {
+                employees.push(doc.data());
+            });
+        }
         
         const employeesMap = {};
-        employeesSnap.forEach(doc => {
-            const emp = doc.data();
+        employees.forEach(emp => {
             employeesMap[emp.correo] = {
                 nombre: emp.nombre,
                 comision_porcentaje: parseFloat(emp.comision_porcentaje) || 10.0,
@@ -189,8 +210,7 @@ exports.getDashboardMetrics = async (req, res) => {
         const currentMonth = now.getMonth();
         const currentYear = now.getFullYear();
 
-        ordersSnap.forEach(doc => {
-            const order = doc.data();
+        orders.forEach(order => {
             if (order.estado === 'Cancelado') return;
 
             const orderDate = new Date(order.fecha_pedido);
