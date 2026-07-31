@@ -106,7 +106,7 @@ window.routeTo = function(event, routeName) {
     window.location.hash = routeName;
 };
 
-async function loadRoute(routeName) {
+async function loadRoute(routeName, isSilentRefresh = false) {
     // Redirect to login if not authenticated
     if (!window.currentUser && routeName !== 'login') {
         window.location.hash = 'login';
@@ -179,10 +179,12 @@ async function loadRoute(routeName) {
     const mainContent = document.getElementById('main-content');
     const viewTitle = document.getElementById('view-title');
 
-    // Instant route load execution
-    mainContent.style.opacity = '0';
-    mainContent.style.transform = 'translateY(5px)';
-    mainContent.style.transition = 'none';
+    // Instant route load execution (skip fade-out during silent background refreshes)
+    if (!isSilentRefresh) {
+        mainContent.style.opacity = '0';
+        mainContent.style.transform = 'translateY(5px)';
+        mainContent.style.transition = 'none';
+    }
 
     try {
         switch (routeName) {
@@ -242,12 +244,14 @@ async function loadRoute(routeName) {
         `;
     }
 
-    // Immediate fade in transition
-    requestAnimationFrame(() => {
-        mainContent.style.transition = 'all 0.12s ease-out';
-        mainContent.style.opacity = '1';
-        mainContent.style.transform = 'translateY(0)';
-    });
+    // Immediate fade in transition (skip if it was a silent background update)
+    if (!isSilentRefresh) {
+        requestAnimationFrame(() => {
+            mainContent.style.transition = 'all 0.12s ease-out';
+            mainContent.style.opacity = '1';
+            mainContent.style.transform = 'translateY(0)';
+        });
+    }
 }
 
 // Listen to Hash Changes
@@ -298,7 +302,7 @@ window.smartRefreshView = function(changedCollection) {
                 console.log("smartRefreshView: Se omitió el refresco de pantalla para proteger la sesión de edición activa del usuario.");
             } else {
                 showToast('🔄 Datos actualizados en tiempo real', 'info');
-                loadRoute(currentRoute);
+                loadRoute(currentRoute, true);
             }
         }
     }, 500);
