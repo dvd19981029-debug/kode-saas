@@ -233,23 +233,39 @@ exports.getDashboardMetrics = async (req, res) => {
             }
         });
 
-        // 3. Payments info (distribute payments by method)
-        const paymentsSnap = await db.collection('payments').get();
-        paymentsSnap.forEach(doc => {
-            const p = doc.data();
+        // 3. Payments info (distribute payments by method) from cache or DB
+        let payments = [];
+        if (global.localCache && global.localCache.payments) {
+            payments = global.localCache.payments;
+        } else {
+            const paymentsSnap = await db.collection('payments').get();
+            paymentsSnap.forEach(doc => {
+                payments.push(doc.data());
+            });
+        }
+
+        payments.forEach(p => {
             if (p.estado_pago !== 'Cancelado' && p.monto_pago) {
                 const method = p.metodo_pago || 'Desconocido';
                 paymentMethods[method] = (paymentMethods[method] || 0.0) + parseFloat(p.monto_pago);
             }
         });
 
-        // 4. Products size per order & Top Perfumes
-        const detailsSnap = await db.collection('order_details').get();
+        // 4. Products size per order & Top Perfumes from cache or DB
+        let order_details = [];
+        if (global.localCache && global.localCache.order_details) {
+            order_details = global.localCache.order_details;
+        } else {
+            const detailsSnap = await db.collection('order_details').get();
+            detailsSnap.forEach(doc => {
+                order_details.push(doc.data());
+            });
+        }
+        
         const perfumeCounts = {};
         const orderDetailGroups = {};
 
-        detailsSnap.forEach(doc => {
-            const d = doc.data();
+        order_details.forEach(d => {
             // Count perfumes
             if (d.contratipo) {
                 perfumeCounts[d.contratipo] = (perfumeCounts[d.contratipo] || 0) + 1;
@@ -260,9 +276,9 @@ exports.getDashboardMetrics = async (req, res) => {
             }
         });
 
-        // Aggregate promos (order sizes)
-        ordersSnap.forEach(doc => {
-            const orderId = doc.id;
+        // Aggregate promos (order sizes) using the orders array
+        orders.forEach(order => {
+            const orderId = order.id;
             const count = orderDetailGroups[orderId] || 0;
             if (count === 1) {
                 orderSizes['1 Perfume']++;

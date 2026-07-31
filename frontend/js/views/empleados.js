@@ -166,10 +166,10 @@ async function renderEmpleados(container) {
                 <td><span style="color: var(--color-registrado); font-weight: 700;">$${pending.toFixed(2)}</span></td>
                 <td>
                     <div style="display: flex; gap: 0.5rem;">
-                        <button class="btn btn-secondary btn-sm" onclick="openEditCommissionModal('${emp.id}', '${emp.nombre.replace(/'/g, "\\'")}')" title="Editar Ficha de Colaborador">
+                        <button class="btn btn-secondary btn-sm" onclick="openEditCommissionModal('${emp.id}', '${(emp.nombre || '').replace(/'/g, "\\'")}')" title="Editar Ficha de Colaborador">
                             <i class="fa-solid fa-user-pen"></i> Editar Ficha
                         </button>
-                        <button class="btn btn-primary btn-sm" style="background-color: var(--color-entregado); border-color: var(--color-entregado);" onclick="openPayCommissionModal('${emp.correo.replace(/'/g, "\\'")}', '${emp.nombre.replace(/'/g, "\\'")}', ${pending})" title="Registrar Pago">
+                        <button class="btn btn-primary btn-sm" style="background-color: var(--color-entregado); border-color: var(--color-entregado);" onclick="openPayCommissionModal('${(emp.correo || '').replace(/'/g, "\\'")}', '${(emp.nombre || '').replace(/'/g, "\\'")}', ${pending})" title="Registrar Pago">
                             <i class="fa-solid fa-money-bill-wave"></i> Registrar Pago
                         </button>
                     </div>
@@ -418,7 +418,7 @@ window.openPayCommissionModal = function(email, name, pendingAmount) {
 
     const footerHTML = `
         <button class="btn btn-secondary" onclick="closeModal()">Cancelar</button>
-        <button class="btn btn-primary" style="background-color: var(--color-entregado); border-color: var(--color-entregado);" onclick="submitPayCommissionForm('${email.replace(/'/g, "\\'")}', '${name.replace(/'/g, "\\'")}')">Registrar Pago</button>
+        <button class="btn btn-primary" style="background-color: var(--color-entregado); border-color: var(--color-entregado);" onclick="submitPayCommissionForm('${(email || '').replace(/'/g, "\\'")}', '${(name || '').replace(/'/g, "\\'")}')">Registrar Pago</button>
     `;
 
     openModal('Registrar Pago de Comisión', bodyHTML, footerHTML);
